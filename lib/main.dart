@@ -6,10 +6,10 @@ import 'providers/auth_provider.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/dashboard/notifications_screen.dart';
 import 'screens/calendar/calendar_screen.dart';
-import 'screens/practices/practices_list_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'widgets/app_drawer.dart';
+import 'screens/exams/exams_list_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,7 +59,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<String> _titles = [
     'RSPCM Dashboard',
     'Practice Calendar',
-    'My Practices',
+    'My Exams',
     'Settings',
   ];
 
@@ -74,7 +74,7 @@ class _MainScreenState extends State<MainScreen> {
     final List<Widget> screens = [
       DashboardScreen(onTabSelected: (i) => _onItemTapped(i)),
       const CalendarScreen(),
-      const PracticesListScreen(),
+      const ExamsListScreen(),
       const ProfileScreen(),
     ];
 
@@ -115,9 +115,9 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Calendar',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_outlined),
-            activeIcon: Icon(Icons.assignment),
-            label: 'Practices',
+            icon: Icon(Icons.fact_check_outlined),
+            activeIcon: Icon(Icons.fact_check),
+            label: 'Exams',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),

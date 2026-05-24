@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 
@@ -45,7 +46,10 @@ class _ExamsListScreenState extends State<ExamsListScreen> {
                         final exam = _exams[index];
                         return ListTile(
                           title: Text(exam.title),
-                          subtitle: Text('${exam.type} • ${exam.status}'),
+                          subtitle: Text(
+                            '${exam.type} • ${exam.status}'
+                            '${exam.endAt != null ? '\nDeadline: ${DateFormat('dd MMM yyyy, HH:mm').format(exam.endAt!)}' : ''}',
+                          ),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () => Navigator.push(
                             context,
@@ -202,6 +206,7 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dateFmt = DateFormat('dd MMM yyyy, HH:mm');
     return Scaffold(
       appBar: AppBar(title: Text(widget.exam.title)),
       body: _isLoading
@@ -211,8 +216,47 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.exam.description.isEmpty ? 'No description' : widget.exam.description),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              Chip(label: Text('Type: ${widget.exam.type}')),
+                              Chip(label: Text('Status: ${widget.exam.status}')),
+                              if (widget.exam.startAt != null)
+                                Chip(label: Text('Start: ${dateFmt.format(widget.exam.startAt!)}')),
+                              if (widget.exam.endAt != null)
+                                Chip(label: Text('End: ${dateFmt.format(widget.exam.endAt!)}')),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   const Text('Available Practices', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
+                  if (_options.isEmpty)
+                    Card(
+                      color: Colors.amber.withValues(alpha: 0.08),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          widget.exam.type != 'PRACTICE'
+                              ? 'No practices because this exam type is ${widget.exam.type}.'
+                              : widget.exam.status != 'PUBLISHED'
+                                  ? 'No practices yet because exam status is ${widget.exam.status}.'
+                                  : 'No practice options found for this exam.',
+                        ),
+                      ),
+                    ),
                   ..._options.map((option) => Card(
                         child: ListTile(
                           title: Text(option.practice.title),
@@ -235,6 +279,13 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                           children: [
                             Text('Practice: ${_participation!.practice.title}'),
                             Text('Status: ${_participation!.status}'),
+                            Text(
+                              _participation!.submission == null
+                                  ? 'Submission: not submitted'
+                                  : 'Submission: ${_participation!.submission!.status}',
+                            ),
+                            if (widget.exam.endAt != null)
+                              Text('Submit before: ${dateFmt.format(widget.exam.endAt!)}'),
                             const SizedBox(height: 8),
                             Wrap(
                               spacing: 8,
@@ -264,6 +315,11 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                     ),
                     const SizedBox(height: 16),
                     const Text('Practice Submission', style: TextStyle(fontWeight: FontWeight.bold)),
+                    if (widget.exam.type != 'PRACTICE')
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Text('Submission is available only for PRACTICE exams.'),
+                      ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _submissionTextController,
@@ -274,7 +330,10 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ElevatedButton(onPressed: _submitPractice, child: const Text('Submit')),
+                    ElevatedButton(
+                      onPressed: widget.exam.type == 'PRACTICE' ? _submitPractice : null,
+                      child: const Text('Submit'),
+                    ),
                     if (_participation!.submission != null) ...[
                       const SizedBox(height: 8),
                       Text('Current status: ${_participation!.submission!.status}'),

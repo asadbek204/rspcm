@@ -23,12 +23,18 @@ class AuthProvider with ChangeNotifier {
   Future<void> _loadSession() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
-    _isAuthenticated = _token != null;
-    
+    _isAuthenticated = _token != null && _token!.isNotEmpty;
+
     if (_isAuthenticated) {
-      fetchProfile(); // Initial fetch
+      final profile = await _apiService.getMyProfile();
+      if (profile != null) {
+        _profile = profile;
+      } else {
+        await logout();
+        return;
+      }
     }
-    
+
     notifyListeners();
   }
 
@@ -65,9 +71,13 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final response = await _apiService.login(LoginRequest(email: email, password: password));
+      if (response.token.isEmpty) {
+        throw Exception('Login failed: empty token in response');
+      }
       _token = response.token;
       _isAuthenticated = true;
-      
+      _profile = await _apiService.getMyProfile();
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', _token!);
     } catch (e) {

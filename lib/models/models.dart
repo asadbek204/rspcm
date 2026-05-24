@@ -288,6 +288,9 @@ class ExamQuestionItem {
   final String questionType;
   final int score;
   final int orderIndex;
+  final List<ExamQuestionOptionItem> options;
+  final String textAnswer;
+  final List<int> selectedOptionIds;
 
   ExamQuestionItem({
     required this.id,
@@ -296,6 +299,9 @@ class ExamQuestionItem {
     required this.questionType,
     required this.score,
     required this.orderIndex,
+    required this.options,
+    required this.textAnswer,
+    required this.selectedOptionIds,
   });
 
   factory ExamQuestionItem.fromJson(Map<String, dynamic> json) {
@@ -305,6 +311,47 @@ class ExamQuestionItem {
       questionText: json['questionText'] ?? '',
       questionType: json['questionType'] ?? '',
       score: json['score'] ?? 0,
+      orderIndex: json['orderIndex'] ?? 0,
+      options: [],
+      textAnswer: '',
+      selectedOptionIds: const [],
+    );
+  }
+
+  factory ExamQuestionItem.fromExamQuestionApi(Map<String, dynamic> json) {
+    return ExamQuestionItem(
+      id: json['examQuestionId'] ?? 0,
+      questionId: json['examQuestionId'] ?? 0,
+      questionText: json['questionText'] ?? '',
+      questionType: json['questionType'] ?? '',
+      score: json['score'] ?? 0,
+      orderIndex: json['orderIndex'] ?? 0,
+      options: (json['options'] as List? ?? [])
+          .map((e) => ExamQuestionOptionItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      textAnswer: json['textAnswer'] ?? '',
+      selectedOptionIds: (json['selectedOptionIds'] as List? ?? [])
+          .map((e) => (e as num).toInt())
+          .toList(),
+    );
+  }
+}
+
+class ExamQuestionOptionItem {
+  final int id;
+  final String text;
+  final int orderIndex;
+
+  ExamQuestionOptionItem({
+    required this.id,
+    required this.text,
+    required this.orderIndex,
+  });
+
+  factory ExamQuestionOptionItem.fromJson(Map<String, dynamic> json) {
+    return ExamQuestionOptionItem(
+      id: json['id'] ?? 0,
+      text: json['text'] ?? '',
       orderIndex: json['orderIndex'] ?? 0,
     );
   }

@@ -320,6 +320,58 @@ class ApiService {
     }
   }
 
+  Future<bool> startExamAttempt(int examId) async {
+    try {
+      await _apiClient.post('${ApiEndpoints.examAttemptStart}/$examId/attempt/start', {});
+      return true;
+    } catch (e) {
+      print('API Error (Start Exam Attempt): $e');
+      return false;
+    }
+  }
+
+  Future<List<ExamQuestionItem>> getMyExamQuestions(int examId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.examQuestionsMe}/$examId/questions/me');
+      final data = json.decode(response.body) as List? ?? [];
+      return data.map((e) => ExamQuestionItem.fromExamQuestionApi(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Get My Exam Questions): $e');
+      return [];
+    }
+  }
+
+  Future<bool> saveExamAnswer(
+    int examId,
+    int examQuestionId, {
+    String? textAnswer,
+    List<int>? selectedOptionIds,
+  }) async {
+    try {
+      await _apiClient.post(
+        '${ApiEndpoints.examQuestionAnswer}/$examId/questions/$examQuestionId/answer',
+        {
+          'textAnswer': textAnswer,
+          'selectedOptionIds': selectedOptionIds ?? [],
+        },
+      );
+      return true;
+    } catch (e) {
+      print('API Error (Save Exam Answer): $e');
+      return false;
+    }
+  }
+
+  Future<bool> submitExamAttempt(int examId) async {
+    try {
+      await _apiClient.post('${ApiEndpoints.examAttemptSubmit}/$examId/attempt/submit', {});
+      return true;
+    } catch (e) {
+      print('API Error (Submit Exam Attempt): $e');
+      return false;
+    }
+  }
+
   Future<List<TeamInvitation>> getMyTeamInvitations() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.myTeamInvitations);

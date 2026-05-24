@@ -14,6 +14,10 @@ class ApiEndpoints {
   static const String examPractices = '/exams'; // /{examId}/practices
   static const String examMyParticipation = '/exams'; // /{examId}/participation/me
   static const String examSelectPractice = '/exams'; // /{examId}/practices/{examPracticeId}/select
+  static const String examAttemptStart = '/exams'; // /{examId}/attempt/start
+  static const String examQuestionsMe = '/exams'; // /{examId}/questions/me
+  static const String examQuestionAnswer = '/exams'; // /{examId}/questions/{examQuestionId}/answer
+  static const String examAttemptSubmit = '/exams'; // /{examId}/attempt/submit
 
   // Profiles
   static const String myProfile = '/profiles/students/me';

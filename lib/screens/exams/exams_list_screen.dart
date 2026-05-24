@@ -78,6 +78,7 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
   List<ExamPracticeOption> _options = [];
   MyExamParticipation? _participation;
   final TextEditingController _submissionTextController = TextEditingController();
+  bool _startingTest = false;
 
   @override
   void initState() {
@@ -253,24 +254,9 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                       ),
                     )
                   else if (widget.exam.type == 'QUESTION') ...[
-                    const Text('Questions', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Question Exam', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    if (widget.exam.questions.isEmpty)
-                      Card(
-                        color: Colors.orange.withValues(alpha: 0.08),
-                        child: const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Text('No questions are attached to this exam yet.'),
-                        ),
-                      )
-                    else
-                      ...widget.exam.questions.map((q) => Card(
-                            child: ListTile(
-                              leading: CircleAvatar(child: Text('${q.orderIndex}')),
-                              title: Text(q.questionText),
-                              subtitle: Text('${q.questionType} • ${q.score} points'),
-                            ),
-                          )),
+                    _buildQuestionExamSummaryCard(),
                   ] else ...[
                     const Text('Practice Choices', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
@@ -371,6 +357,236 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildQuestionExamSummaryCard() {
+    final total = widget.exam.questions.length;
+    final open = widget.exam.questions.where((q) => q.questionType == 'OPEN').length;
+    final closed = widget.exam.questions.where((q) => q.questionType == 'CLOSED').length;
+    final multi = widget.exam.questions.where((q) => q.questionType == 'MULTIPLE_CHOICE').length;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Total questions: $total'),
+            const SizedBox(height: 6),
+            Text('Open: $open'),
+            Text('Closed: $closed'),
+            Text('Multiple choice: $multi'),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _startingTest
+                    ? null
+                    : () async {
+                        setState(() => _startingTest = true);
+                        final ok = await _apiService.startExamAttempt(widget.exam.id);
+                        if (!mounted) return;
+                        setState(() => _startingTest = false);
+                        if (!ok) return;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => QuestionTestScreen(exam: widget.exam),
+                          ),
+                        );
+                      },
+                child: _startingTest
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Start Test'),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class QuestionTestScreen extends StatefulWidget {
+  final StudentExam exam;
+
+  const QuestionTestScreen({super.key, required this.exam});
+
+  @override
+  State<QuestionTestScreen> createState() => _QuestionTestScreenState();
+}
+
+class _QuestionTestScreenState extends State<QuestionTestScreen> {
+  final ApiService _apiService = ApiService();
+  bool _isLoading = true;
+  bool _isSaving = false;
+  int _index = 0;
+  List<ExamQuestionItem> _questions = [];
+  final TextEditingController _textController = TextEditingController();
+  final Set<int> _selectedOptionIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final data = await _apiService.getMyExamQuestions(widget.exam.id);
+    if (!mounted) return;
+    setState(() {
+      _questions = data;
+      _isLoading = false;
+    });
+    _syncQuestionState();
+  }
+
+  void _syncQuestionState() {
+    if (_questions.isEmpty || _index >= _questions.length) return;
+    final current = _questions[_index];
+    _textController.text = current.textAnswer;
+    _selectedOptionIds
+      ..clear()
+      ..addAll(current.selectedOptionIds);
+  }
+
+  Future<void> _saveCurrentAnswer() async {
+    if (_questions.isEmpty) return;
+    final current = _questions[_index];
+    setState(() => _isSaving = true);
+    final ok = await _apiService.saveExamAnswer(
+      widget.exam.id,
+      current.id,
+      textAnswer: _textController.text.trim().isEmpty ? null : _textController.text.trim(),
+      selectedOptionIds: _selectedOptionIds.toList(),
+    );
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    if (ok) {
+      await _load();
+    }
+  }
+
+  Future<void> _submitTest() async {
+    final ok = await _apiService.submitExamAttempt(widget.exam.id);
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_questions.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.exam.title)),
+        body: const Center(child: Text('No questions available')),
+      );
+    }
+
+    final q = _questions[_index];
+    final isOpen = q.questionType == 'OPEN';
+    final isMultiple = q.questionType == 'MULTIPLE_CHOICE';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Test: ${widget.exam.title}'),
+        actions: [
+          TextButton(
+            onPressed: _submitTest,
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Question ${_index + 1}/${_questions.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(q.questionText),
+            const SizedBox(height: 12),
+            if (isOpen)
+              TextField(
+                controller: _textController,
+                maxLines: 6,
+                decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Type your answer'),
+              )
+            else
+              Expanded(
+                child: ListView(
+                  children: q.options.map((opt) {
+                    final selected = _selectedOptionIds.contains(opt.id);
+                    return CheckboxListTile(
+                      value: selected,
+                      onChanged: (value) {
+                        setState(() {
+                          if (isMultiple) {
+                            if (value == true) {
+                              _selectedOptionIds.add(opt.id);
+                            } else {
+                              _selectedOptionIds.remove(opt.id);
+                            }
+                          } else {
+                            _selectedOptionIds
+                              ..clear()
+                              ..add(opt.id);
+                          }
+                        });
+                      },
+                      title: Text(opt.text),
+                    );
+                  }).toList(),
+                ),
+              ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                OutlinedButton(
+                  onPressed: _index == 0
+                      ? null
+                      : () async {
+                          await _saveCurrentAnswer();
+                          if (!mounted) return;
+                          setState(() => _index -= 1);
+                          _syncQuestionState();
+                        },
+                  child: const Text('Previous'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _isSaving
+                      ? null
+                      : () async {
+                          await _saveCurrentAnswer();
+                          if (!mounted) return;
+                          if (_index < _questions.length - 1) {
+                            setState(() => _index += 1);
+                            _syncQuestionState();
+                          }
+                        },
+                  child: _isSaving ? const Text('Saving...') : const Text('Save & Next'),
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
     );
   }
 }

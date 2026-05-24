@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/models.dart';
@@ -400,9 +402,15 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
             Text('Open: $open'),
             Text('Closed: $closed'),
             Text('Multiple choice: $multi'),
+            if (widget.exam.taskLimit > 0) ...[
+              const SizedBox(height: 6),
+              Text('Time limit: ${widget.exam.taskLimit} min'),
+            ],
             if (_attempt != null) ...[
               const SizedBox(height: 6),
               Text('Attempt: ${_attempt!.status}'),
+              if (_attempt!.status == 'STARTED' && _attempt!.remainingSeconds != null)
+                Text('Time left: ${_formatDuration(_attempt!.remainingSeconds!)}'),
             ],
             const SizedBox(height: 12),
             SizedBox(
@@ -437,6 +445,16 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
       ),
     );
   }
+
+  String _formatDuration(int totalSeconds) {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
 }
 
 class QuestionTestScreen extends StatefulWidget {
@@ -458,6 +476,10 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
   final Set<int> _selectedOptionIds = {};
   bool _isDirty = false;
   int? _lastSavedQuestionId;
+  StudentExamAttemptInfo? _attemptInfo;
+  Timer? _timer;
+  int? _remainingSeconds;
+  bool _timeoutSubmitting = false;
 
   @override
   void initState() {
@@ -467,12 +489,52 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
 
   Future<void> _load() async {
     final data = await _apiService.getMyExamQuestions(widget.exam.id);
+    final attempt = await _apiService.getMyExamAttempt(widget.exam.id);
     if (!mounted) return;
     setState(() {
       _questions = data;
+      _attemptInfo = attempt;
+      _remainingSeconds = attempt?.remainingSeconds;
       _isLoading = false;
     });
+    _setupTimer();
     _syncQuestionState();
+  }
+
+  void _setupTimer() {
+    _timer?.cancel();
+    if (_attemptInfo?.status != 'STARTED' || _remainingSeconds == null) return;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (!mounted) return;
+      final current = _remainingSeconds;
+      if (current == null) return;
+      if (current <= 0) {
+        timer.cancel();
+        if (_timeoutSubmitting) return;
+        _timeoutSubmitting = true;
+        await _submitByTimeout();
+        _timeoutSubmitting = false;
+        return;
+      }
+      setState(() => _remainingSeconds = current - 1);
+    });
+  }
+
+  Future<void> _submitByTimeout() async {
+    if (_isDirty) {
+      await _saveCurrentAnswer();
+      if (!mounted) return;
+    }
+    final ok = await _apiService.submitExamAttempt(widget.exam.id);
+    if (!mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Time is over. Test submitted automatically.')),
+      );
+      Navigator.pop(context);
+    } else {
+      await _load();
+    }
   }
 
   void _syncQuestionState() {
@@ -545,6 +607,7 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     _textController.dispose();
     super.dispose();
   }
@@ -577,6 +640,16 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
         appBar: AppBar(
         title: Text('Test: ${widget.exam.title}'),
         actions: [
+          if (_remainingSeconds != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Center(
+                child: Text(
+                  _formatDuration(_remainingSeconds!),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
           TextButton(
             onPressed: _submitTest,
             child: const Text('Submit'),
@@ -669,5 +742,15 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
         ),
       ),
     ));
+  }
+
+  String _formatDuration(int totalSeconds) {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 }

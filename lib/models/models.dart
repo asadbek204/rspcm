@@ -246,6 +246,7 @@ class StudentExam {
   final String status;
   final int practiceCount;
   final int questionCount;
+  final int taskLimit;
   final List<ExamQuestionItem> questions;
 
   StudentExam({
@@ -258,6 +259,7 @@ class StudentExam {
     required this.status,
     required this.practiceCount,
     required this.questionCount,
+    required this.taskLimit,
     required this.questions,
   });
 
@@ -274,6 +276,7 @@ class StudentExam {
       status: json['status'] ?? '',
       practiceCount: practices.length,
       questionCount: questions.length,
+      taskLimit: (json['taskLimit'] as num?)?.toInt() ?? 0,
       questions: questions
           .map((e) => ExamQuestionItem.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -361,11 +364,15 @@ class StudentExamAttemptInfo {
   final String status;
   final DateTime? startedAt;
   final DateTime? submittedAt;
+  final DateTime? attemptDeadlineAt;
+  final int? remainingSeconds;
 
   StudentExamAttemptInfo({
     required this.status,
     required this.startedAt,
     required this.submittedAt,
+    required this.attemptDeadlineAt,
+    required this.remainingSeconds,
   });
 
   factory StudentExamAttemptInfo.fromJson(Map<String, dynamic> json) {
@@ -373,6 +380,8 @@ class StudentExamAttemptInfo {
       status: json['status'] ?? '',
       startedAt: DateTime.tryParse((json['startedAt'] ?? '').toString()),
       submittedAt: DateTime.tryParse((json['submittedAt'] ?? '').toString()),
+      attemptDeadlineAt: DateTime.tryParse((json['attemptDeadlineAt'] ?? '').toString()),
+      remainingSeconds: (json['remainingSeconds'] as num?)?.toInt(),
     );
   }
 }

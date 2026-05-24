@@ -1,5 +1,5 @@
 class ApiEndpoints {
-  static const String baseUrl = 'https://api.rspcm.uz/api';
+  static const String baseUrl = 'http://localhost:8080/api';
 
   // Auth
   static const String login = '/auth/login';

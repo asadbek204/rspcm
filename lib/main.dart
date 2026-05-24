@@ -1,0 +1,131 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'providers/theme_provider.dart';
+import 'providers/auth_provider.dart';
+import 'screens/dashboard/dashboard_screen.dart';
+import 'screens/dashboard/notifications_screen.dart';
+import 'screens/calendar/calendar_screen.dart';
+import 'screens/practices/practices_list_screen.dart';
+import 'screens/profile/profile_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'widgets/app_drawer.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<ThemeProvider, AuthProvider>(
+      builder: (context, themeProvider, authProvider, child) {
+        return MaterialApp(
+          title: 'RSPCM Student',
+          debugShowCheckedModeBanner: false,
+          theme: themeProvider.themeData,
+          home: authProvider.isAuthenticated ? const MainScreen() : const LoginScreen(),
+        );
+      },
+    );
+  }
+}
+
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _selectedIndex = 0;
+
+  final List<String> _titles = [
+    'RSPCM Dashboard',
+    'Practice Calendar',
+    'My Practices',
+    'Settings',
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> screens = [
+      DashboardScreen(onTabSelected: (i) => _onItemTapped(i)),
+      const CalendarScreen(),
+      const PracticesListScreen(),
+      const ProfileScreen(),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_titles[_selectedIndex]),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        actions: [
+          if (_selectedIndex == 0)
+            IconButton(
+              icon: const Icon(Icons.notifications_none),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
+            ),
+        ],
+      ),
+      drawer: AppDrawer(onTabSelected: _onItemTapped),
+      body: screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today_outlined),
+            activeIcon: Icon(Icons.calendar_today),
+            label: 'Calendar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment_outlined),
+            activeIcon: Icon(Icons.assignment),
+            label: 'Practices',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}

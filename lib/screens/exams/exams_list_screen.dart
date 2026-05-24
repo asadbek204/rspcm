@@ -242,7 +242,17 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (widget.exam.type == 'QUESTION') ...[
+                  if (widget.exam.status != 'PUBLISHED')
+                    Card(
+                      color: Colors.orange.withValues(alpha: 0.08),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          'This exam is not available yet. It will open when published. Current status: ${widget.exam.status}.',
+                        ),
+                      ),
+                    )
+                  else if (widget.exam.type == 'QUESTION') ...[
                     const Text('Questions', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     if (widget.exam.questions.isEmpty)
@@ -264,17 +274,7 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                   ] else ...[
                     const Text('Practice Choices', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    if (widget.exam.status != 'PUBLISHED')
-                      Card(
-                        color: Colors.orange.withValues(alpha: 0.08),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Text(
-                            'Practice selection is locked until this exam is published. Current status: ${widget.exam.status}.',
-                          ),
-                        ),
-                      )
-                    else if (_options.isEmpty)
+                    if (_options.isEmpty)
                       Card(
                         color: Colors.amber.withValues(alpha: 0.08),
                         child: const Padding(

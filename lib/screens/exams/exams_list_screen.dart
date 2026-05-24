@@ -258,27 +258,39 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                     const SizedBox(height: 8),
                     _buildQuestionExamSummaryCard(),
                   ] else ...[
-                    const Text('Practice Choices', style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    if (_options.isEmpty)
+                    if (_participation == null) ...[
+                      const Text('Practice Choices', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      if (_options.isEmpty)
+                        Card(
+                          color: Colors.amber.withValues(alpha: 0.08),
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Text('No practice options are configured for this exam.'),
+                          ),
+                        )
+                      else
+                        ..._options.map((option) => Card(
+                              child: ListTile(
+                                title: Text(option.practice.title),
+                                subtitle: Text(option.practice.description),
+                                trailing: ElevatedButton(
+                                  onPressed: () => _selectPractice(option.id),
+                                  child: const Text('Select'),
+                                ),
+                              ),
+                            )),
+                    ] else ...[
                       Card(
-                        color: Colors.amber.withValues(alpha: 0.08),
+                        color: Colors.blue.withValues(alpha: 0.06),
                         child: const Padding(
                           padding: EdgeInsets.all(12),
-                          child: Text('No practice options are configured for this exam.'),
+                          child: Text(
+                            'Practice is already selected. To choose another one, first leave team or cancel participation.',
+                          ),
                         ),
-                      )
-                    else
-                      ..._options.map((option) => Card(
-                            child: ListTile(
-                              title: Text(option.practice.title),
-                              subtitle: Text(option.practice.description),
-                              trailing: ElevatedButton(
-                                onPressed: () => _selectPractice(option.id),
-                                child: const Text('Select'),
-                              ),
-                            ),
-                          )),
+                      ),
+                    ],
                   ],
                   const SizedBox(height: 16),
                   if (_participation != null) ...[

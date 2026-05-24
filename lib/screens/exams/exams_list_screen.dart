@@ -87,7 +87,8 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
 
   Future<void> _load() async {
     setState(() => _isLoading = true);
-    final options = await _apiService.getExamPractices(widget.exam.id);
+    final isPracticeExam = widget.exam.type == 'PRACTICE';
+    final options = isPracticeExam ? await _apiService.getExamPractices(widget.exam.id) : <ExamPracticeOption>[];
     final participation = await _apiService.getMyExamParticipation(widget.exam.id);
     if (!mounted) return;
     setState(() {
@@ -241,32 +242,58 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text('Available Practices', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  if (_options.isEmpty)
-                    Card(
-                      color: Colors.amber.withValues(alpha: 0.08),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          widget.exam.type != 'PRACTICE'
-                              ? 'No practices because this exam type is ${widget.exam.type}.'
-                              : widget.exam.status != 'PUBLISHED'
-                                  ? 'No practices yet because exam status is ${widget.exam.status}.'
-                                  : 'No practice options found for this exam.',
+                  if (widget.exam.type == 'QUESTION') ...[
+                    const Text('Questions', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    if (widget.exam.questions.isEmpty)
+                      Card(
+                        color: Colors.orange.withValues(alpha: 0.08),
+                        child: const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Text('No questions are attached to this exam yet.'),
                         ),
-                      ),
-                    ),
-                  ..._options.map((option) => Card(
-                        child: ListTile(
-                          title: Text(option.practice.title),
-                          subtitle: Text(option.practice.description),
-                          trailing: ElevatedButton(
-                            onPressed: () => _selectPractice(option.id),
-                            child: const Text('Select'),
+                      )
+                    else
+                      ...widget.exam.questions.map((q) => Card(
+                            child: ListTile(
+                              leading: CircleAvatar(child: Text('${q.orderIndex}')),
+                              title: Text(q.questionText),
+                              subtitle: Text('${q.questionType} • ${q.score} points'),
+                            ),
+                          )),
+                  ] else ...[
+                    const Text('Practice Choices', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    if (widget.exam.status != 'PUBLISHED')
+                      Card(
+                        color: Colors.orange.withValues(alpha: 0.08),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(
+                            'Practice selection is locked until this exam is published. Current status: ${widget.exam.status}.',
                           ),
                         ),
-                      )),
+                      )
+                    else if (_options.isEmpty)
+                      Card(
+                        color: Colors.amber.withValues(alpha: 0.08),
+                        child: const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Text('No practice options are configured for this exam.'),
+                        ),
+                      )
+                    else
+                      ..._options.map((option) => Card(
+                            child: ListTile(
+                              title: Text(option.practice.title),
+                              subtitle: Text(option.practice.description),
+                              trailing: ElevatedButton(
+                                onPressed: () => _selectPractice(option.id),
+                                child: const Text('Select'),
+                              ),
+                            ),
+                          )),
+                  ],
                   const SizedBox(height: 16),
                   if (_participation != null) ...[
                     const Text('My Participation', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -318,7 +345,7 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                     if (widget.exam.type != 'PRACTICE')
                       const Padding(
                         padding: EdgeInsets.only(bottom: 8),
-                        child: Text('Submission is available only for PRACTICE exams.'),
+                        child: Text('Submission is available only for practice exams.'),
                       ),
                     const SizedBox(height: 8),
                     TextField(

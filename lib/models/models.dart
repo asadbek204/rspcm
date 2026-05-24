@@ -244,6 +244,9 @@ class StudentExam {
   final DateTime? endAt;
   final String type;
   final String status;
+  final int practiceCount;
+  final int questionCount;
+  final List<ExamQuestionItem> questions;
 
   StudentExam({
     required this.id,
@@ -253,9 +256,14 @@ class StudentExam {
     required this.endAt,
     required this.type,
     required this.status,
+    required this.practiceCount,
+    required this.questionCount,
+    required this.questions,
   });
 
   factory StudentExam.fromJson(Map<String, dynamic> json) {
+    final practices = (json['practices'] as List? ?? []);
+    final questions = (json['questions'] as List? ?? []);
     return StudentExam(
       id: json['id'] ?? 0,
       title: json['title'] ?? '',
@@ -264,6 +272,40 @@ class StudentExam {
       endAt: DateTime.tryParse((json['endAt'] ?? '').toString()),
       type: json['type'] ?? '',
       status: json['status'] ?? '',
+      practiceCount: practices.length,
+      questionCount: questions.length,
+      questions: questions
+          .map((e) => ExamQuestionItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class ExamQuestionItem {
+  final int id;
+  final int questionId;
+  final String questionText;
+  final String questionType;
+  final int score;
+  final int orderIndex;
+
+  ExamQuestionItem({
+    required this.id,
+    required this.questionId,
+    required this.questionText,
+    required this.questionType,
+    required this.score,
+    required this.orderIndex,
+  });
+
+  factory ExamQuestionItem.fromJson(Map<String, dynamic> json) {
+    return ExamQuestionItem(
+      id: json['id'] ?? 0,
+      questionId: json['questionId'] ?? 0,
+      questionText: json['questionText'] ?? '',
+      questionType: json['questionType'] ?? '',
+      score: json['score'] ?? 0,
+      orderIndex: json['orderIndex'] ?? 0,
     );
   }
 }

@@ -330,6 +330,19 @@ class ApiService {
     }
   }
 
+  Future<StudentExamAttemptInfo?> getMyExamAttempt(int examId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.examAttemptMe}/$examId/attempt/me');
+      return StudentExamAttemptInfo.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      if (_isNotFoundError(e)) {
+        return null;
+      }
+      print('API Error (Get My Exam Attempt): $e');
+      return null;
+    }
+  }
+
   Future<List<ExamQuestionItem>> getMyExamQuestions(int examId) async {
     try {
       final response = await _apiClient.get('${ApiEndpoints.examQuestionsMe}/$examId/questions/me');

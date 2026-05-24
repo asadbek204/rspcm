@@ -357,6 +357,26 @@ class ExamQuestionOptionItem {
   }
 }
 
+class StudentExamAttemptInfo {
+  final String status;
+  final DateTime? startedAt;
+  final DateTime? submittedAt;
+
+  StudentExamAttemptInfo({
+    required this.status,
+    required this.startedAt,
+    required this.submittedAt,
+  });
+
+  factory StudentExamAttemptInfo.fromJson(Map<String, dynamic> json) {
+    return StudentExamAttemptInfo(
+      status: json['status'] ?? '',
+      startedAt: DateTime.tryParse((json['startedAt'] ?? '').toString()),
+      submittedAt: DateTime.tryParse((json['submittedAt'] ?? '').toString()),
+    );
+  }
+}
+
 class TeamInvitation {
   final int participationId;
   final int examId;

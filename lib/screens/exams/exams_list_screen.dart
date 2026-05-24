@@ -30,6 +30,12 @@ class _ExamsListScreenState extends State<ExamsListScreen> {
     });
   }
 
+  String _studentStatusLabel(StudentExam exam) {
+    if (exam.status == 'PUBLISHED') return 'Available';
+    if (exam.status == 'COMPLETED' || exam.status == 'CANCELLED') return 'Closed';
+    return 'Not Open';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,7 +53,7 @@ class _ExamsListScreenState extends State<ExamsListScreen> {
                         return ListTile(
                           title: Text(exam.title),
                           subtitle: Text(
-                            '${exam.type} • ${exam.status}'
+                            '${exam.type} • ${_studentStatusLabel(exam)}'
                             '${exam.endAt != null ? '\nDeadline: ${DateFormat('dd MMM yyyy, HH:mm').format(exam.endAt!)}' : ''}',
                           ),
                           trailing: const Icon(Icons.chevron_right),
@@ -79,6 +85,7 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
   MyExamParticipation? _participation;
   final TextEditingController _submissionTextController = TextEditingController();
   bool _startingTest = false;
+  StudentExamAttemptInfo? _attempt;
 
   @override
   void initState() {
@@ -91,10 +98,12 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
     final isPracticeExam = widget.exam.type == 'PRACTICE';
     final options = isPracticeExam ? await _apiService.getExamPractices(widget.exam.id) : <ExamPracticeOption>[];
     final participation = await _apiService.getMyExamParticipation(widget.exam.id);
+    final attempt = widget.exam.type == 'QUESTION' ? await _apiService.getMyExamAttempt(widget.exam.id) : null;
     if (!mounted) return;
     setState(() {
       _options = options;
       _participation = participation;
+      _attempt = attempt;
       _isLoading = false;
     });
   }
@@ -378,6 +387,8 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
     final closed = widget.exam.questions.where((q) => q.questionType == 'CLOSED').length;
     final multi = widget.exam.questions.where((q) => q.questionType == 'MULTIPLE_CHOICE').length;
 
+    final isSubmitted = _attempt?.status == 'SUBMITTED' || _attempt?.status == 'GRADED';
+    final hasStarted = _attempt?.status == 'STARTED';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -389,15 +400,19 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
             Text('Open: $open'),
             Text('Closed: $closed'),
             Text('Multiple choice: $multi'),
+            if (_attempt != null) ...[
+              const SizedBox(height: 6),
+              Text('Attempt: ${_attempt!.status}'),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _startingTest
+                onPressed: _startingTest || isSubmitted
                     ? null
                     : () async {
                         setState(() => _startingTest = true);
-                        final ok = await _apiService.startExamAttempt(widget.exam.id);
+                        final ok = hasStarted ? true : await _apiService.startExamAttempt(widget.exam.id);
                         if (!mounted) return;
                         setState(() => _startingTest = false);
                         if (!ok) return;
@@ -414,7 +429,7 @@ class _ExamParticipationScreenState extends State<ExamParticipationScreen> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Start Test'),
+                    : Text(isSubmitted ? 'Already Submitted' : (hasStarted ? 'Resume Test' : 'Start Test')),
               ),
             )
           ],
@@ -441,6 +456,8 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
   List<ExamQuestionItem> _questions = [];
   final TextEditingController _textController = TextEditingController();
   final Set<int> _selectedOptionIds = {};
+  bool _isDirty = false;
+  int? _lastSavedQuestionId;
 
   @override
   void initState() {
@@ -480,16 +497,50 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
     if (!mounted) return;
     setState(() => _isSaving = false);
     if (ok) {
+      _lastSavedQuestionId = current.id;
+      _isDirty = false;
       await _load();
     }
   }
 
   Future<void> _submitTest() async {
+    if (_isDirty) {
+      await _saveCurrentAnswer();
+      if (!mounted) return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Submit Test'),
+        content: const Text('Are you sure you want to submit? You will not be able to edit answers after submit.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Submit')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
     final ok = await _apiService.submitExamAttempt(widget.exam.id);
     if (!mounted) return;
     if (ok) {
       Navigator.pop(context);
     }
+  }
+
+  Future<bool> _onWillPop() async {
+    if (!_isDirty) return true;
+    final shouldLeave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved Changes'),
+        content: const Text('You have unsaved changes. Leave without saving?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Stay')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Leave')),
+        ],
+      ),
+    );
+    return shouldLeave == true;
   }
 
   @override
@@ -514,8 +565,16 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
     final isOpen = q.questionType == 'OPEN';
     final isMultiple = q.questionType == 'MULTIPLE_CHOICE';
 
-    return Scaffold(
-      appBar: AppBar(
+    return PopScope(
+      canPop: !_isDirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop || !_isDirty) return;
+        final shouldLeave = await _onWillPop();
+        if (!mounted) return;
+        if (shouldLeave) Navigator.of(this.context).pop();
+      },
+      child: Scaffold(
+        appBar: AppBar(
         title: Text('Test: ${widget.exam.title}'),
         actions: [
           TextButton(
@@ -530,6 +589,14 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Question ${_index + 1}/${_questions.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(
+              _lastSavedQuestionId == q.id && !_isDirty ? 'Saved' : (_isDirty ? 'Unsaved changes' : 'Not saved yet'),
+              style: TextStyle(
+                color: _isDirty ? Colors.orange : Colors.green,
+                fontSize: 12,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(q.questionText),
             const SizedBox(height: 12),
@@ -537,6 +604,7 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
               TextField(
                 controller: _textController,
                 maxLines: 6,
+                onChanged: (_) => setState(() => _isDirty = true),
                 decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Type your answer'),
               )
             else
@@ -548,6 +616,7 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
                       value: selected,
                       onChanged: (value) {
                         setState(() {
+                          _isDirty = true;
                           if (isMultiple) {
                             if (value == true) {
                               _selectedOptionIds.add(opt.id);
@@ -599,6 +668,6 @@ class _QuestionTestScreenState extends State<QuestionTestScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

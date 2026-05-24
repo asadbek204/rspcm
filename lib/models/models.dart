@@ -298,3 +298,110 @@ class TeamInvitation {
     );
   }
 }
+
+class SubjectItem {
+  final int id;
+  final String name;
+  final String description;
+
+  SubjectItem({
+    required this.id,
+    required this.name,
+    required this.description,
+  });
+
+  factory SubjectItem.fromJson(Map<String, dynamic> json) {
+    return SubjectItem(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+    );
+  }
+}
+
+class ExamPracticeOption {
+  final int id;
+  final int examId;
+  final Practice practice;
+
+  ExamPracticeOption({
+    required this.id,
+    required this.examId,
+    required this.practice,
+  });
+
+  factory ExamPracticeOption.fromJson(Map<String, dynamic> json) {
+    return ExamPracticeOption(
+      id: json['id'] ?? 0,
+      examId: json['examId'] ?? 0,
+      practice: Practice.fromJson((json['practice'] ?? {}) as Map<String, dynamic>),
+    );
+  }
+}
+
+class PracticeSubmission {
+  final int id;
+  final int participationId;
+  final String textAnswer;
+  final String fileUrl;
+  final String status;
+  final String teacherComment;
+
+  PracticeSubmission({
+    required this.id,
+    required this.participationId,
+    required this.textAnswer,
+    required this.fileUrl,
+    required this.status,
+    required this.teacherComment,
+  });
+
+  factory PracticeSubmission.fromJson(Map<String, dynamic> json) {
+    return PracticeSubmission(
+      id: json['id'] ?? 0,
+      participationId: json['participationId'] ?? 0,
+      textAnswer: json['textAnswer'] ?? '',
+      fileUrl: json['fileUrl'] ?? '',
+      status: json['status'] ?? '',
+      teacherComment: json['teacherComment'] ?? '',
+    );
+  }
+}
+
+class MyExamParticipation {
+  final int participationId;
+  final int examId;
+  final int examPracticeId;
+  final Practice practice;
+  final String status;
+  final List<StudentSummary> members;
+  final PracticeSubmission? submission;
+
+  MyExamParticipation({
+    required this.participationId,
+    required this.examId,
+    required this.examPracticeId,
+    required this.practice,
+    required this.status,
+    required this.members,
+    required this.submission,
+  });
+
+  factory MyExamParticipation.fromJson(Map<String, dynamic> json) {
+    final membersRaw = (json['members'] as List? ?? []);
+    return MyExamParticipation(
+      participationId: json['participationId'] ?? 0,
+      examId: json['examId'] ?? 0,
+      examPracticeId: json['examPracticeId'] ?? 0,
+      practice: Practice.fromJson((json['practice'] ?? {}) as Map<String, dynamic>),
+      status: json['status'] ?? '',
+      members: membersRaw.map((m) {
+        final user = ((m as Map<String, dynamic>)['user'] ?? {}) as Map<String, dynamic>;
+        return StudentSummary.fromJson(user);
+      }).toList(),
+      submission: json['submission'] == null
+          ? null
+          : PracticeSubmission.fromJson(json['submission'] as Map<String, dynamic>),
+    );
+  }
+}

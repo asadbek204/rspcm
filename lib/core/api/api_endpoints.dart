@@ -11,10 +11,16 @@ class ApiEndpoints {
   // Student Dashboard
   static const String studentDashboard = '/student-dashboard/me';
   static const String myExams = '/exams/my';
+  static const String examPractices = '/exams'; // /{examId}/practices
+  static const String examMyParticipation = '/exams'; // /{examId}/participation/me
+  static const String examSelectPractice = '/exams'; // /{examId}/practices/{examPracticeId}/select
 
   // Profiles
   static const String myProfile = '/profiles/students/me';
   static const String studentProfile = '/profiles/students'; // Append /{userId}
+
+  // Subjects
+  static const String subjects = '/subjects';
 
   // Practices
   static const String practices = '/practices';
@@ -28,6 +34,9 @@ class ApiEndpoints {
   static const String practiceParticipationsMe = '/practice-participations/me';
   static const String practiceParticipationMembersInvite = '/practice-participations'; // /{id}/members/invite
   static const String myTeamInvitations = '/practice-participations/members/invitations/me';
+  static const String leaveMyTeam = '/practice-participations'; // /{participationId}/members/me
+  static const String availableStudentsForInvite = '/student/practice-participations'; // /{participationId}/members/available
+  static const String removeTeamMember = '/student/practice-participations'; // /{participationId}/members/{memberId}
 
   // Journals
   static const String myJournals = '/practice-journals/me';
@@ -38,4 +47,7 @@ class ApiEndpoints {
   static const String answers = '/answers';
   static const String myAnswers = '/answers/me';
   static const String answerScore = '/score'; // Use with answer ID
+
+  // Practice submissions
+  static const String practiceSubmissions = '/practice-submissions'; // /participation/{id}, /participation/{id}/submit
 }

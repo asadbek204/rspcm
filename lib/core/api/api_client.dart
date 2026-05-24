@@ -66,6 +66,18 @@ class ApiClient {
     }
   }
 
+  Future<http.Response> delete(String endpoint) async {
+    final headers = await _getHeaders();
+    final url = Uri.parse('${ApiEndpoints.baseUrl}$endpoint');
+
+    try {
+      final response = await _client.delete(url, headers: headers);
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
   http.Response _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response;

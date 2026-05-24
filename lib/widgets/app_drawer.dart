@@ -4,6 +4,8 @@ import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../screens/chat/chats_list_screen.dart';
 import '../screens/chat/groups_list_screen.dart';
+import '../screens/subjects/subjects_list_screen.dart';
+import '../screens/exams/exams_list_screen.dart';
 
 class AppDrawer extends StatefulWidget {
   final Function(int) onTabSelected;
@@ -47,6 +49,24 @@ class _AppDrawerState extends State<AppDrawer> {
                     Navigator.pop(context);
                     widget.onTabSelected(2);
                   },
+                ),
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.menu_book_outlined,
+                  title: 'Subjects',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SubjectsListScreen()),
+                  ),
+                ),
+                _buildDrawerItem(
+                  context,
+                  icon: Icons.fact_check_outlined,
+                  title: 'Exams',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ExamsListScreen()),
+                  ),
                 ),
               ],
             ),

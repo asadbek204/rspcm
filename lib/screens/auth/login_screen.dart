@@ -13,14 +13,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   Future<void> _handleLogin() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     try {
-      await auth.login(_emailController.text.trim(), _passwordController.text);
+      await auth.login(_identifierController.text.trim(), _passwordController.text);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,9 +81,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 50),
                   _buildTextField(
-                    controller: _emailController,
-                    hint: 'Email Address',
-                    icon: Icons.email_outlined,
+                    controller: _identifierController,
+                    hint: 'Email or University ID',
+                    icon: Icons.person_outline,
                     theme: theme,
                   ),
                   const SizedBox(height: 20),

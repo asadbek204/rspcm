@@ -65,12 +65,12 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String identifier, String password) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final response = await _apiService.login(LoginRequest(email: email, password: password));
+      final response = await _apiService.login(LoginRequest(identifier: identifier, password: password));
       if (response.token.isEmpty) {
         throw Exception('Login failed: empty token in response');
       }

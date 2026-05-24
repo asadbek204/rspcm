@@ -7,6 +7,8 @@ import '../core/api/api_endpoints.dart';
 class ApiService {
   final ApiClient _apiClient = ApiClient();
 
+  bool _isNotFoundError(Object e) => e.toString().contains('Server Error (404)');
+
   // Auth Methods
   Future<AuthResponse> login(LoginRequest request) async {
     final response = await _apiClient.post(ApiEndpoints.login, request.toJson());
@@ -143,6 +145,19 @@ class ApiService {
     }
   }
 
+  Future<bool> inviteTeamMembersByParticipation(int participationId, List<int> memberIds) async {
+    try {
+      await _apiClient.post(
+        '${ApiEndpoints.practiceParticipationMembersInvite}/$participationId/members/invite',
+        {'studentIds': memberIds},
+      );
+      return true;
+    } catch (e) {
+      print('API Error (Invite Members): $e');
+      return false;
+    }
+  }
+
   // Journals
   Future<List<PracticeJournal>> getMyJournals() async {
     try {
@@ -182,6 +197,126 @@ class ApiService {
     } catch (e) {
       print('API Error (My Exams): $e');
       return [];
+    }
+  }
+
+  Future<List<SubjectItem>> getSubjects({int page = 0, int size = 20}) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.subjects}?page=$page&size=$size');
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final content = data['content'] as List? ?? [];
+      return content.map((e) => SubjectItem.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Subjects): $e');
+      return [];
+    }
+  }
+
+  Future<List<ExamPracticeOption>> getExamPractices(int examId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.examPractices}/$examId/practices');
+      final data = json.decode(response.body) as List? ?? [];
+      return data.map((e) => ExamPracticeOption.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Exam Practices): $e');
+      return [];
+    }
+  }
+
+  Future<MyExamParticipation?> getMyExamParticipation(int examId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.examMyParticipation}/$examId/participation/me');
+      return MyExamParticipation.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      if (_isNotFoundError(e)) {
+        return null;
+      }
+      print('API Error (My Exam Participation): $e');
+      return null;
+    }
+  }
+
+  Future<bool> selectExamPractice(int examId, int examPracticeId) async {
+    try {
+      await _apiClient.post('${ApiEndpoints.examSelectPractice}/$examId/practices/$examPracticeId/select', {});
+      return true;
+    } catch (e) {
+      print('API Error (Select Exam Practice): $e');
+      return false;
+    }
+  }
+
+  Future<bool> cancelExamParticipation(int examId) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.examMyParticipation}/$examId/participation/me');
+      return true;
+    } catch (e) {
+      print('API Error (Cancel Participation): $e');
+      return false;
+    }
+  }
+
+  Future<List<StudentSummary>> getAvailableStudentsForInvite(int participationId) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiEndpoints.availableStudentsForInvite}/$participationId/members/available',
+      );
+      final data = json.decode(response.body) as List? ?? [];
+      return data.map((e) => StudentSummary.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Available Students): $e');
+      return [];
+    }
+  }
+
+  Future<bool> removeTeamMember(int participationId, int memberId) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.removeTeamMember}/$participationId/members/$memberId');
+      return true;
+    } catch (e) {
+      print('API Error (Remove Team Member): $e');
+      return false;
+    }
+  }
+
+  Future<bool> leaveTeam(int participationId) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.leaveMyTeam}/$participationId/members/me');
+      return true;
+    } catch (e) {
+      print('API Error (Leave Team): $e');
+      return false;
+    }
+  }
+
+  Future<PracticeSubmission?> getPracticeSubmissionByParticipation(int participationId) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiEndpoints.practiceSubmissions}/participation/$participationId',
+      );
+      return PracticeSubmission.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      if (_isNotFoundError(e)) {
+        return null;
+      }
+      print('API Error (Practice Submission): $e');
+      return null;
+    }
+  }
+
+  Future<bool> submitPracticeSubmission(int participationId, {String? textAnswer, String? fileUrl}) async {
+    try {
+      await _apiClient.post(
+        '${ApiEndpoints.practiceSubmissions}/participation/$participationId/submit',
+        {
+          'textAnswer': textAnswer,
+          'fileUrl': fileUrl,
+        },
+      );
+      return true;
+    } catch (e) {
+      print('API Error (Submit Practice Submission): $e');
+      return false;
     }
   }
 

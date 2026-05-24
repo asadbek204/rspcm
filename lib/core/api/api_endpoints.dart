@@ -10,6 +10,7 @@ class ApiEndpoints {
 
   // Student Dashboard
   static const String studentDashboard = '/student-dashboard/me';
+  static const String myExams = '/exams/my';
 
   // Profiles
   static const String myProfile = '/profiles/students/me';
@@ -24,8 +25,9 @@ class ApiEndpoints {
   static const String practiceTopics = '/topics'; // Base is /api/practices/{id}/topics
 
   // Practice Teams
-  static const String practiceTeamByPractice = '/practice-teams/practice'; // Append /{practiceId}
-  static const String practiceTeams = '/practice-teams';
+  static const String practiceParticipationsMe = '/practice-participations/me';
+  static const String practiceParticipationMembersInvite = '/practice-participations'; // /{id}/members/invite
+  static const String myTeamInvitations = '/practice-participations/members/invitations/me';
 
   // Journals
   static const String myJournals = '/practice-journals/me';

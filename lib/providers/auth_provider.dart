@@ -41,6 +41,24 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> updateProfile({int? course}) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final updated = await _apiService.updateMyProfile(course: course);
+      if (updated != null) {
+        _profile = updated;
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> login(String email, String password) async {
     _isLoading = true;
     notifyListeners();

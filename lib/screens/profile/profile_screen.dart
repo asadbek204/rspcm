@@ -153,28 +153,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEditProfileDialog(BuildContext context, StudentProfileResponse? profile) {
+    int selectedCourse = profile?.course != null && profile!.course > 0 ? profile.course : 1;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Edit Profile'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              decoration: const InputDecoration(labelText: 'Phone Number'),
-              controller: TextEditingController(text: profile?.phoneNumber),
+        content: StatefulBuilder(
+          builder: (context, setDialogState) => DropdownButtonFormField<int>(
+            initialValue: selectedCourse,
+            decoration: const InputDecoration(labelText: 'Course'),
+            items: List.generate(
+              8,
+              (index) => DropdownMenuItem<int>(
+                value: index + 1,
+                child: Text('${index + 1} Year'),
+              ),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              decoration: const InputDecoration(labelText: 'Notes'),
-              controller: TextEditingController(text: profile?.notes),
-              maxLines: 3,
-            ),
-          ],
+            onChanged: (value) {
+              if (value != null) {
+                setDialogState(() => selectedCourse = value);
+              }
+            },
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Save')),
+          ElevatedButton(
+            onPressed: () async {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              final updated = await authProvider.updateProfile(course: selectedCourse);
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(updated ? 'Profile updated' : 'Failed to update profile'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../services/api_service.dart';
 
 class NotificationModel {
   final String id;
@@ -8,6 +9,7 @@ class NotificationModel {
   final DateTime timestamp;
   final bool isRead;
   final IconData icon;
+  final int? participationId;
 
   NotificationModel({
     required this.id,
@@ -16,67 +18,109 @@ class NotificationModel {
     required this.timestamp,
     this.isRead = false,
     this.icon = Icons.notifications,
+    this.participationId,
   });
 }
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final ApiService _apiService = ApiService();
+  bool _isLoading = true;
+  List<NotificationModel> _notifications = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchNotifications();
+  }
+
+  Future<void> _fetchNotifications() async {
+    final invitations = await _apiService.getMyTeamInvitations();
+    final exams = await _apiService.getMyExams();
+
+    final items = <NotificationModel>[
+      ...invitations.map((inv) => NotificationModel(
+            id: 'inv-${inv.participationId}',
+            title: 'Team Invitation',
+            body: '${inv.invitedByName.isEmpty ? 'A student' : inv.invitedByName} invited you to ${inv.practiceName}.',
+            timestamp: DateTime.now(),
+            icon: Icons.group_add,
+            participationId: inv.participationId,
+          )),
+      ...exams.where((e) => e.endAt != null).map((exam) => NotificationModel(
+            id: 'exam-${exam.id}',
+            title: 'Exam Deadline',
+            body: '${exam.title} ends on ${DateFormat('MMM dd, HH:mm').format(exam.endAt!)}',
+            timestamp: exam.endAt!,
+            icon: Icons.timer,
+            isRead: true,
+          )),
+    ];
+
+    items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    if (!mounted) return;
+    setState(() {
+      _notifications = items;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    final List<NotificationModel> notifications = [
-      NotificationModel(
-        id: '1',
-        title: 'New Practice Assigned',
-        body: 'You have been assigned to "Cloud Computing Practice". Check your practices list.',
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-        icon: Icons.assignment_late,
-      ),
-      NotificationModel(
-        id: '2',
-        title: 'Message from Teacher',
-        body: 'Teacher Dono upgraded your journal entry for yesterday.',
-        timestamp: DateTime.now().subtract(const Duration(days: 1)),
-        icon: Icons.chat,
-        isRead: true,
-      ),
-      NotificationModel(
-        id: '3',
-        title: 'Deadline Approaching',
-        body: 'The deadline for "Mobile App Project" is in 2 days.',
-        timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 5)),
-        icon: Icons.timer,
-        isRead: true,
-      ),
-    ];
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
-        actions: [
-          TextButton(
-            onPressed: () {},
-            child: const Text('Mark all as read'),
-          ),
-        ],
       ),
-      body: notifications.isEmpty
+      body: _notifications.isEmpty
           ? _buildEmptyState(theme)
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              itemCount: notifications.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final notification = notifications[index];
-                return _buildNotificationItem(context, notification, theme);
-              },
+          : RefreshIndicator(
+              onRefresh: _fetchNotifications,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                itemCount: _notifications.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final notification = _notifications[index];
+                  return _buildNotificationItem(context, notification, theme);
+                },
+              ),
             ),
     );
   }
 
-  Widget _buildNotificationItem(BuildContext context, NotificationModel item, ThemeData theme) {
+  @override
+  void dispose() {
+    super.dispose();
+  }
+}
+
+class _NotificationView extends StatelessWidget {
+  final NotificationModel item;
+  final ThemeData theme;
+  final VoidCallback? onAccept;
+  final VoidCallback? onDecline;
+
+  const _NotificationView({
+    required this.item,
+    required this.theme,
+    this.onAccept,
+    this.onDecline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       color: item.isRead ? Colors.transparent : theme.primaryColor.withValues(alpha: 0.05),
       child: ListTile(
@@ -104,20 +148,63 @@ class NotificationsScreen extends StatelessWidget {
           ],
         ),
         onTap: () {},
+        trailing: item.participationId == null
+            ? null
+            : Wrap(
+                spacing: 6,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: onDecline,
+                    tooltip: 'Decline',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.check, size: 18),
+                    onPressed: onAccept,
+                    tooltip: 'Accept',
+                  ),
+                ],
+              ),
       ),
     );
   }
+}
 
-  Widget _buildEmptyState(ThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.notifications_off_outlined, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 20),
-          const Text('No notifications yet', style: TextStyle(color: Colors.grey, fontSize: 18)),
-        ],
-      ),
-    );
-  }
+Widget _buildNotificationItem(BuildContext context, NotificationModel item, ThemeData theme) {
+  final state = context.findAncestorStateOfType<_NotificationsScreenState>();
+  return _NotificationView(
+    item: item,
+    theme: theme,
+    onDecline: item.participationId == null || state == null
+        ? null
+        : () async {
+            final ok = await state._apiService.declineTeamInvitation(item.participationId!);
+            if (!state.mounted) return;
+            if (ok) {
+              await state._fetchNotifications();
+            }
+          },
+    onAccept: item.participationId == null || state == null
+        ? null
+        : () async {
+            final ok = await state._apiService.acceptTeamInvitation(item.participationId!);
+            if (!state.mounted) return;
+            if (ok) {
+              await state._fetchNotifications();
+            }
+          },
+  );
+}
+
+Widget _buildEmptyState(ThemeData theme) {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.notifications_off_outlined, size: 80, color: Colors.grey.shade300),
+        const SizedBox(height: 20),
+        const Text('No notifications yet', style: TextStyle(color: Colors.grey, fontSize: 18)),
+      ],
+    ),
+  );
 }

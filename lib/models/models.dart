@@ -135,13 +135,14 @@ class Practice {
   });
 
   factory Practice.fromJson(Map<String, dynamic> json) {
+    final deadlineRaw = json['deadline'] ?? json['endAt'] ?? json['dueDate'];
     return Practice(
       id: json['id'] ?? 0,
       title: json['name'] ?? '',
       description: json['description'] ?? '',
       resourceUrl: json['resourceUrl'],
       requirements: json['requirements'],
-      deadline: DateTime.tryParse(json['deadline'] ?? '') ?? DateTime.now(),
+      deadline: DateTime.tryParse(deadlineRaw?.toString() ?? '') ?? DateTime.now(),
       workMode: json['workMode'] ?? 'INDIVIDUAL',
       teamSize: json['teamSize'] ?? 1,
       calendarRequired: json['calendarRequired'] ?? false,
@@ -231,6 +232,69 @@ class PracticeJournal {
       calendarFilePath: json['calendarFilePath'],
       submittedAt: DateTime.tryParse(json['submittedAt'] ?? '') ?? DateTime.now(),
       practiceId: json['practiceId'] ?? 0,
+    );
+  }
+}
+
+class StudentExam {
+  final int id;
+  final String title;
+  final String description;
+  final DateTime? startAt;
+  final DateTime? endAt;
+  final String type;
+  final String status;
+
+  StudentExam({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.startAt,
+    required this.endAt,
+    required this.type,
+    required this.status,
+  });
+
+  factory StudentExam.fromJson(Map<String, dynamic> json) {
+    return StudentExam(
+      id: json['id'] ?? 0,
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      startAt: DateTime.tryParse((json['startAt'] ?? '').toString()),
+      endAt: DateTime.tryParse((json['endAt'] ?? '').toString()),
+      type: json['type'] ?? '',
+      status: json['status'] ?? '',
+    );
+  }
+}
+
+class TeamInvitation {
+  final int participationId;
+  final int examId;
+  final int examPracticeId;
+  final String examTitle;
+  final String practiceName;
+  final String invitedByName;
+
+  TeamInvitation({
+    required this.participationId,
+    required this.examId,
+    required this.examPracticeId,
+    required this.examTitle,
+    required this.practiceName,
+    required this.invitedByName,
+  });
+
+  factory TeamInvitation.fromJson(Map<String, dynamic> json) {
+    final practice = (json['practice'] ?? {}) as Map<String, dynamic>;
+    final invitedBy = (json['invitedBy'] ?? {}) as Map<String, dynamic>;
+    return TeamInvitation(
+      participationId: json['participationId'] ?? 0,
+      examId: json['examId'] ?? 0,
+      examPracticeId: json['examPracticeId'] ?? 0,
+      examTitle: json['examTitle'] ?? '',
+      practiceName: practice['name'] ?? '',
+      invitedByName: '${invitedBy['firstName'] ?? ''} ${invitedBy['lastName'] ?? ''}'.trim(),
     );
   }
 }

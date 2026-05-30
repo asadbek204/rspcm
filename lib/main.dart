@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'screens/dashboard/dashboard_screen.dart';
@@ -13,6 +16,8 @@ import 'screens/exams/exams_list_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  initializeDateFormatting('ru_RU');
+  Intl.defaultLocale = 'ru_RU';
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -36,12 +41,34 @@ class MyApp extends StatelessWidget {
     return Consumer2<ThemeProvider, AuthProvider>(
       builder: (context, themeProvider, authProvider, child) {
         return MaterialApp(
-          title: 'RSPCM Student',
+          title: 'RSPCM Студент',
           debugShowCheckedModeBanner: false,
+          locale: const Locale('ru', 'RU'),
+          supportedLocales: const [Locale('ru', 'RU')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
           theme: themeProvider.themeData,
-          home: authProvider.isAuthenticated ? const MainScreen() : const LoginScreen(),
+          home: authProvider.isLoading
+              ? const _StartupLoadingScreen()
+              : (authProvider.isAuthenticated ? const MainScreen() : const LoginScreen()),
         );
       },
+    );
+  }
+}
+
+class _StartupLoadingScreen extends StatelessWidget {
+  const _StartupLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }
@@ -57,10 +84,10 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<String> _titles = [
-    'RSPCM Dashboard',
-    'Practice Calendar',
-    'My Exams',
-    'Settings',
+    'Панель RSPCM',
+    'Календарь практик',
+    'Мои экзамены',
+    'Настройки',
   ];
 
   void _onItemTapped(int index) {
@@ -107,22 +134,22 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_outlined),
             activeIcon: Icon(Icons.dashboard),
-            label: 'Home',
+            label: 'Главная',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today_outlined),
             activeIcon: Icon(Icons.calendar_today),
-            label: 'Calendar',
+            label: 'Календарь',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.fact_check_outlined),
             activeIcon: Icon(Icons.fact_check),
-            label: 'Exams',
+            label: 'Экзамены',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
-            label: 'Profile',
+            label: 'Профиль',
           ),
         ],
       ),

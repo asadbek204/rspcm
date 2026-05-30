@@ -32,19 +32,19 @@ class _AppDrawerState extends State<AppDrawer> {
                 _buildDrawerItem(
                   context,
                   icon: Icons.group_outlined,
-                  title: 'Groups',
+                  title: 'Группы',
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GroupsListScreen())),
                 ),
                 _buildDrawerItem(
                   context,
                   icon: Icons.chat_bubble_outline,
-                  title: 'Chats',
+                  title: 'Чаты',
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatsListScreen())),
                 ),
                 _buildDrawerItem(
                   context,
                   icon: Icons.assignment_outlined,
-                  title: 'Practices',
+                  title: 'Практики',
                   onTap: () {
                     Navigator.pop(context);
                     widget.onTabSelected(2);
@@ -53,7 +53,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 _buildDrawerItem(
                   context,
                   icon: Icons.menu_book_outlined,
-                  title: 'Subjects',
+                  title: 'Предметы',
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const SubjectsListScreen()),
@@ -62,7 +62,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 _buildDrawerItem(
                   context,
                   icon: Icons.fact_check_outlined,
-                  title: 'Exams',
+                  title: 'Экзамены',
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const ExamsListScreen()),
@@ -104,12 +104,12 @@ class _AppDrawerState extends State<AppDrawer> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  profile != null ? '${profile.firstName} ${profile.lastName}' : 'Loading...',
+                  profile != null ? '${profile.firstName} ${profile.lastName}' : 'Загрузка...',
                   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  profile?.studentNumber ?? 'Student ID: Fetching...',
+                  profile?.studentNumber ?? 'ID студента: загрузка...',
                   style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                 ),
               ],
@@ -133,7 +133,7 @@ class _AppDrawerState extends State<AppDrawer> {
     return ListTile(
       leading: const Icon(Icons.logout, color: Colors.redAccent),
       title: const Text(
-        'Logout',
+        'Выйти',
         style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
       ),
       onTap: () {

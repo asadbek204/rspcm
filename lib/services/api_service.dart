@@ -446,19 +446,33 @@ class ApiService {
     }
   }
 
-  // --- Fake Functions for Messaging (No Swagger equivalent yet) ---
-  
   Future<List<Map<String, dynamic>>> getChats() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return [
-      {'id': '1', 'name': 'Student A', 'lastMessage': 'See you at the practice!'},
-      {'id': '2', 'name': 'Teacher B', 'lastMessage': 'Report received.'},
-    ];
+    try {
+      final response = await _apiClient.get(ApiEndpoints.myChats);
+      return List<Map<String, dynamic>>.from(json.decode(response.body));
+    } catch (e) {
+      print('API Error (Get Chats): $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getChatMessages(String chatId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.chats}/$chatId/messages');
+      return List<Map<String, dynamic>>.from(json.decode(response.body));
+    } catch (e) {
+      print('API Error (Get Chat Messages): $e');
+      return [];
+    }
   }
 
   Future<bool> sendMessage(String chatId, String message) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    print('Message sent to $chatId: $message');
-    return true;
+    try {
+      await _apiClient.post('${ApiEndpoints.chats}/$chatId/messages', {'message': message});
+      return true;
+    } catch (e) {
+      print('API Error (Send Chat Message): $e');
+      return false;
+    }
   }
 }

@@ -45,9 +45,9 @@ class _PracticesListScreenState extends State<PracticesListScreen> {
           children: [
             Icon(Icons.assignment_outlined, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
-            const Text('No practices found', style: TextStyle(color: Colors.grey, fontSize: 18)),
+            const Text('Практики не найдены', style: TextStyle(color: Colors.grey, fontSize: 18)),
             const SizedBox(height: 8),
-            ElevatedButton(onPressed: _fetchPractices, child: const Text('Refresh')),
+            ElevatedButton(onPressed: _fetchPractices, child: const Text('Обновить')),
           ],
         ),
       );
@@ -104,7 +104,7 @@ class _PracticesListScreenState extends State<PracticesListScreen> {
                     ),
                   ),
                   _buildStatusChip(
-                    practice.deadline.isAfter(DateTime.now()) ? 'Active' : 'Expired', 
+                    practice.deadline.isAfter(DateTime.now()) ? 'Активна' : 'Завершена', 
                     theme
                   ),
                 ],
@@ -115,7 +115,7 @@ class _PracticesListScreenState extends State<PracticesListScreen> {
                   Icon(Icons.calendar_month, size: 16, color: theme.primaryColor),
                   const SizedBox(width: 5),
                   Text(
-                    'Deadline: ${DateFormat('dd MMM yyyy').format(practice.deadline)}',
+                    'Срок: ${DateFormat('dd MMM yyyy', 'ru_RU').format(practice.deadline)}',
                     style: const TextStyle(color: Colors.grey, fontSize: 13),
                   ),
                   const Spacer(),
@@ -128,7 +128,7 @@ class _PracticesListScreenState extends State<PracticesListScreen> {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        practice.workMode,
+                        practice.workMode == 'TEAM' ? 'Командная' : 'Индивидуальная',
                         style: const TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ],

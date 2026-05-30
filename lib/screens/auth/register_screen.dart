@@ -33,7 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         await auth.register(request);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration initiated! Please verify your email.')),
+            const SnackBar(content: Text('Регистрация начата. Подтвердите email.')),
           );
           Navigator.push(
             context,
@@ -45,7 +45,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${e.toString()}')),
+            SnackBar(content: Text('Ошибка: ${e.toString()}')),
           );
         }
       }
@@ -57,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Account'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: const Text('Создать аккаунт'), backgroundColor: Colors.transparent),
       extendBodyBehindAppBar: true,
       body: Container(
         decoration: BoxDecoration(
@@ -78,24 +78,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Join RSPCM', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  const Text('Присоединяйтесь к RSPCM', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
-                  Text('Level up your student practice experience', style: TextStyle(color: Colors.grey.shade500)),
+                  Text('Сделайте обучение и практику удобнее', style: TextStyle(color: Colors.grey.shade500)),
                   const SizedBox(height: 40),
-                  _buildInputGroup('Full Name'),
+                  _buildInputGroup('ФИО'),
                   Row(
                     children: [
-                      Expanded(child: _buildField(_firstNameController, 'First Name', Icons.person_outline)),
+                      Expanded(child: _buildField(_firstNameController, 'Имя', Icons.person_outline)),
                       const SizedBox(width: 15),
-                      Expanded(child: _buildField(_lastNameController, 'Last Name', null)),
+                      Expanded(child: _buildField(_lastNameController, 'Фамилия', null)),
                     ],
                   ),
                   const SizedBox(height: 25),
-                  _buildInputGroup('Account Details'),
-                  _buildField(_emailController, 'Email Address', Icons.email_outlined, keyboard: TextInputType.emailAddress),
+                  _buildInputGroup('Данные аккаунта'),
+                  _buildField(_emailController, 'Email адрес', Icons.email_outlined, keyboard: TextInputType.emailAddress),
                   const SizedBox(height: 25),
-                  _buildInputGroup('Security'),
-                  _buildField(_passwordController, 'Create Password', Icons.lock_outline, obscure: true),
+                  _buildInputGroup('Безопасность'),
+                  _buildField(_passwordController, 'Придумайте пароль', Icons.lock_outline, obscure: true),
                   const SizedBox(height: 40),
                   Consumer<AuthProvider>(
                     builder: (context, auth, _) {
@@ -111,7 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           child: auth.isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text('Register Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              : const Text('Зарегистрироваться', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       );
                     },
@@ -120,7 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Center(
                     child: TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Already have an account? Login'),
+                      child: const Text('Уже есть аккаунт? Войти'),
                     ),
                   ),
                 ],
@@ -145,7 +145,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       controller: controller,
       obscureText: obscure,
       keyboardType: keyboard,
-      validator: (v) => v!.isEmpty ? 'Required' : (obscure && v.length < 6 ? 'Min 6 characters' : null),
+      validator: (v) => v!.isEmpty ? 'Обязательное поле' : (obscure && v.length < 6 ? 'Минимум 6 символов' : null),
       decoration: InputDecoration(
         hintText: hint,
         prefixIcon: icon != null ? Icon(icon, color: theme.primaryColor, size: 20) : null,

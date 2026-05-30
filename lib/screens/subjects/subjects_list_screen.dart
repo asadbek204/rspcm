@@ -32,13 +32,13 @@ class _SubjectsListScreenState extends State<SubjectsListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Subjects')),
+      appBar: AppBar(title: const Text('Предметы')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
               child: _subjects.isEmpty
-                  ? const Center(child: Text('No subjects found'))
+                  ? const Center(child: Text('Предметы не найдены'))
                   : ListView.separated(
                       itemCount: _subjects.length,
                       separatorBuilder: (_, index) => const Divider(height: 1),

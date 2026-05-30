@@ -98,13 +98,13 @@ class StudentProfileResponse {
     final userJson = json['user'] ?? {};
     return StudentProfileResponse(
       id: json['id'] ?? 0,
-      userId: userJson['id'] ?? 0,
-      firstName: userJson['firstName'] ?? '',
-      lastName: userJson['lastName'] ?? '',
-      email: userJson['email'] ?? '',
+      userId: userJson['id'] ?? json['userId'] ?? 0,
+      firstName: userJson['firstName'] ?? json['firstName'] ?? '',
+      lastName: userJson['lastName'] ?? json['lastName'] ?? '',
+      email: userJson['email'] ?? json['email'] ?? '',
       course: json['course'] ?? 0,
-      studentNumber: json['studentNumber'] ?? '',
-      phoneNumber: json['phoneNumber'] ?? '',
+      studentNumber: json['studentNumber'] ?? userJson['universityId'] ?? '',
+      phoneNumber: json['phoneNumber'] ?? userJson['phoneNumber'] ?? '',
       notes: json['notes'] ?? '',
     );
   }

@@ -21,29 +21,42 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> _loadSession() async {
+    _isLoading = true;
+    notifyListeners();
+
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
     _isAuthenticated = _token != null && _token!.isNotEmpty;
 
-    if (_isAuthenticated) {
-      final profile = await _apiService.getMyProfile();
-      if (profile != null) {
-        _profile = profile;
-      } else {
-        await logout();
-        return;
+    try {
+      if (_isAuthenticated) {
+        final profile = await _apiService.getMyProfile();
+        if (profile != null) {
+          _profile = profile;
+        } else {
+          await logout();
+          return;
+        }
       }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    notifyListeners();
   }
 
   Future<void> fetchProfile() async {
+    _isLoading = true;
+    notifyListeners();
     try {
-      _profile = await _apiService.getMyProfile();
-      notifyListeners();
+      final profile = await _apiService.getMyProfile();
+      if (profile != null) {
+        _profile = profile;
+      }
     } catch (e) {
       // Handle error silently or via a snackbar
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

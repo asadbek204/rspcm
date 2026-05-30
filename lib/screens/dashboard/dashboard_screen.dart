@@ -23,6 +23,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _fetchDashboardData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      if (auth.isAuthenticated && auth.profile == null && !auth.isLoading) {
+        auth.fetchProfile();
+      }
+    });
   }
 
   Future<void> _fetchDashboardData() async {
@@ -69,7 +75,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 30),
             _buildCalendarSummary(context),
             const SizedBox(height: 30),
-            _buildRecentPractices(context, _dashboardData?.practices ?? []),
+            _buildRecentPractices(context, _dashboardData?.exams ?? []),
           ],
         ),
       ),
@@ -79,7 +85,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildHeader(BuildContext context, AuthProvider auth) {
     final theme = Theme.of(context);
     final profile = auth.profile;
-    final String firstName = profile?.firstName ?? 'Student';
+    final bool isProfileLoading = auth.isLoading && profile == null;
+    final String firstName = profile?.firstName ?? (isProfileLoading ? '...' : 'Student');
     final String lastName = profile?.lastName ?? '';
     
     return Row(
@@ -88,7 +95,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           radius: 30,
           backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
           child: Text(
-            firstName.isNotEmpty ? firstName.substring(0, 1).toUpperCase() : 'S',
+            firstName.isNotEmpty && firstName != '...' ? firstName.substring(0, 1).toUpperCase() : 'S',
             style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 24),
           ),
         ),
@@ -97,7 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Welcome back,',
+              'С возвращением,',
               style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
             ),
             Text(
@@ -134,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Nearest Deadline',
+                'Ближайший срок',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               Container(
@@ -144,7 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  daysLeft >= 0 ? '$daysLeft days left' : 'Overdue',
+                  daysLeft >= 0 ? 'Осталось $daysLeft дн.' : 'Просрочено',
                   style: const TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ),
@@ -185,8 +192,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Icon(Icons.check_circle_outline, color: Colors.green, size: 40),
           SizedBox(height: 10),
-          Text('No upcoming deadlines', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text('You are all caught up!', style: TextStyle(color: Colors.grey)),
+          Text('Нет ближайших сроков', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('Вы всё успеваете!', style: TextStyle(color: Colors.grey)),
         ],
       ),
     );
@@ -201,12 +208,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Your Activity',
+              'Ваша активность',
               style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             TextButton(
               onPressed: () => widget.onTabSelected?.call(1),
-              child: const Text('View Full'),
+              child: const Text('Показать все'),
             ),
           ],
         ),
@@ -247,14 +254,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Ongoing Practices',
+          'Текущие экзамены',
           style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 15),
         if (items.isEmpty)
           const Center(child: Padding(
             padding: EdgeInsets.all(20.0),
-            child: Text('No active practices found', style: TextStyle(color: Colors.grey)),
+            child: Text('Активных экзаменов нет', style: TextStyle(color: Colors.grey)),
           ))
         else
           ListView.separated(
@@ -294,7 +301,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            'Deadline: ${DateFormat('dd MMM').format(practice.deadline)}',
+                            'Срок: ${DateFormat('dd MMM', 'ru_RU').format(practice.deadline)}',
                             style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
                         ],

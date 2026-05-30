@@ -47,16 +47,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final items = <NotificationModel>[
       ...invitations.map((inv) => NotificationModel(
             id: 'inv-${inv.participationId}',
-            title: 'Team Invitation',
-            body: '${inv.invitedByName.isEmpty ? 'A student' : inv.invitedByName} invited you to ${inv.practiceName}.',
+            title: 'Приглашение в команду',
+            body: '${inv.invitedByName.isEmpty ? 'Студент' : inv.invitedByName} пригласил(а) вас в практику ${inv.practiceName}.',
             timestamp: DateTime.now(),
             icon: Icons.group_add,
             participationId: inv.participationId,
           )),
       ...exams.where((e) => e.endAt != null).map((exam) => NotificationModel(
             id: 'exam-${exam.id}',
-            title: 'Exam Deadline',
-            body: '${exam.title} ends on ${DateFormat('MMM dd, HH:mm').format(exam.endAt!)}',
+            title: 'Срок экзамена',
+            body: '${exam.title} завершится ${DateFormat('dd MMM, HH:mm', 'ru_RU').format(exam.endAt!)}',
             timestamp: exam.endAt!,
             icon: Icons.timer,
             isRead: true,
@@ -81,7 +81,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const Text('Уведомления'),
       ),
       body: _notifications.isEmpty
           ? _buildEmptyState(theme)
@@ -156,12 +156,12 @@ class _NotificationView extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.close, size: 18),
                     onPressed: onDecline,
-                    tooltip: 'Decline',
+                    tooltip: 'Отклонить',
                   ),
                   IconButton(
                     icon: const Icon(Icons.check, size: 18),
                     onPressed: onAccept,
-                    tooltip: 'Accept',
+                    tooltip: 'Принять',
                   ),
                 ],
               ),
@@ -203,7 +203,7 @@ Widget _buildEmptyState(ThemeData theme) {
       children: [
         Icon(Icons.notifications_off_outlined, size: 80, color: Colors.grey.shade300),
         const SizedBox(height: 20),
-        const Text('No notifications yet', style: TextStyle(color: Colors.grey, fontSize: 18)),
+        const Text('Пока нет уведомлений', style: TextStyle(color: Colors.grey, fontSize: 18)),
       ],
     ),
   );

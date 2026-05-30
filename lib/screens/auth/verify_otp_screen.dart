@@ -23,12 +23,12 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Verification successful! You can now login.')),
+          const SnackBar(content: Text('Подтверждение успешно. Теперь можно войти.')),
         );
         Navigator.popUntil(context, (route) => route.isFirst);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid code. Please try again.')),
+          const SnackBar(content: Text('Неверный код. Попробуйте еще раз.')),
         );
       }
     }
@@ -41,7 +41,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     if (mounted) {
       setState(() => _isResending = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verification code resent.')),
+        const SnackBar(content: Text('Код подтверждения отправлен повторно.')),
       );
     }
   }
@@ -51,7 +51,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Verify Email')),
+      appBar: AppBar(title: const Text('Подтверждение email')),
       body: Padding(
         padding: const EdgeInsets.all(30),
         child: Column(
@@ -60,7 +60,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
             const Icon(Icons.mark_email_read_outlined, size: 80, color: Colors.blue),
             const SizedBox(height: 30),
             const Text(
-              'Enter the code sent to',
+              'Введите код, отправленный на',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             Text(
@@ -93,7 +93,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                     ),
                     child: auth.isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Verify Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        : const Text('Подтвердить', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 );
               },
@@ -101,7 +101,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
             const SizedBox(height: 20),
             TextButton(
               onPressed: _isResending ? null : _handleResend,
-              child: Text(_isResending ? 'Resending...' : 'Resend Code'),
+              child: Text(_isResending ? 'Отправка...' : 'Отправить код повторно'),
             ),
           ],
         ),

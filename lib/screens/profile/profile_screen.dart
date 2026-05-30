@@ -14,6 +14,17 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAuthenticated && authProvider.profile == null && !authProvider.isLoading) {
+        authProvider.fetchProfile();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final authProvider = Provider.of<AuthProvider>(context);
@@ -21,6 +32,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (authProvider.isLoading && profile == null) {
       return const Center(child: CircularProgressIndicator());
+    }
+    if (profile == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Не удалось загрузить профиль'),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => authProvider.fetchProfile(),
+                child: const Text('Повторить'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return RefreshIndicator(
@@ -33,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildInfoSection(theme, profile),
           const SizedBox(height: 30),
           Text(
-            'Display Theme',
+            'Тема оформления',
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 15),
@@ -45,10 +74,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisSpacing: 15,
             childAspectRatio: 1.1,
             children: [
-              _buildThemeOption(context, AppThemeType.darkGold, 'Dark Gold', Colors.black, const Color(0xFFFFB300)),
-              _buildThemeOption(context, AppThemeType.darkEmerald, 'Dark Emerald', Colors.black, const Color(0xFF2ECC71)),
-              _buildThemeOption(context, AppThemeType.softLatte, 'Soft Latte', const Color(0xFFFFF8F3), const Color(0xFF795548)),
-              _buildThemeOption(context, AppThemeType.softZinc, 'Soft Zinc', const Color(0xFFF9F9F9), const Color(0xFF18181B)),
+              _buildThemeOption(context, AppThemeType.darkGold, 'Темное золото', Colors.black, const Color(0xFFFFB300)),
+              _buildThemeOption(context, AppThemeType.darkEmerald, 'Темный изумруд', Colors.black, const Color(0xFF2ECC71)),
+              _buildThemeOption(context, AppThemeType.softLatte, 'Мягкий латте', const Color(0xFFFFF8F3), const Color(0xFF795548)),
+              _buildThemeOption(context, AppThemeType.softZinc, 'Мягкий цинк', const Color(0xFFF9F9F9), const Color(0xFF18181B)),
             ],
           ),
           const SizedBox(height: 40),
@@ -62,7 +91,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 elevation: 0,
               ),
-              child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Выйти', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -70,7 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileCard(BuildContext context, StudentProfileResponse? profile) {
+  Widget _buildProfileCard(BuildContext context, StudentProfileResponse profile) {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
@@ -85,19 +114,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             radius: 40,
             backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
             child: Text(
-              (profile != null && profile.firstName.isNotEmpty) 
-                  ? profile.firstName.substring(0, 1).toUpperCase() 
-                  : 'S',
+              profile.firstName.isNotEmpty
+                  ? profile.firstName.substring(0, 1).toUpperCase()
+                  : '?',
               style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: theme.primaryColor),
             ),
           ),
           const SizedBox(height: 15),
           Text(
-            '${profile?.firstName ?? 'Student'} ${profile?.lastName ?? ''}',
+            '${profile.firstName} ${profile.lastName}',
             style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           Text(
-            profile?.studentNumber ?? 'No Student ID',
+            profile.studentNumber.isNotEmpty ? profile.studentNumber : 'No Student ID',
             style: const TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 20),
@@ -108,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: OutlinedButton.styleFrom(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Edit Profile'),
+              child: const Text('Редактировать профиль'),
             ),
           ),
         ],
@@ -116,7 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoSection(ThemeData theme, StudentProfileResponse? profile) {
+  Widget _buildInfoSection(ThemeData theme, StudentProfileResponse profile) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -126,11 +155,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          _buildInfoRow(Icons.email_outlined, 'Email', profile?.email ?? 'N/A', theme),
+          _buildInfoRow(Icons.email_outlined, 'Email', profile.email.isNotEmpty ? profile.email : 'Н/Д', theme),
           const Divider(height: 30),
-          _buildInfoRow(Icons.phone_outlined, 'Phone', profile?.phoneNumber ?? 'N/A', theme),
+          _buildInfoRow(Icons.phone_outlined, 'Телефон', profile.phoneNumber.isNotEmpty ? profile.phoneNumber : 'Н/Д', theme),
           const Divider(height: 30),
-          _buildInfoRow(Icons.school_outlined, 'Course', '${profile?.course ?? 0} Year', theme),
+          _buildInfoRow(Icons.school_outlined, 'Курс', '${profile.course} курс', theme),
         ],
       ),
     );
@@ -158,16 +187,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Edit Profile'),
+        title: const Text('Редактировать профиль'),
         content: StatefulBuilder(
           builder: (context, setDialogState) => DropdownButtonFormField<int>(
             initialValue: selectedCourse,
-            decoration: const InputDecoration(labelText: 'Course'),
+            decoration: const InputDecoration(labelText: 'Курс'),
             items: List.generate(
               8,
               (index) => DropdownMenuItem<int>(
                 value: index + 1,
-                child: Text('${index + 1} Year'),
+                child: Text('${index + 1} курс'),
               ),
             ),
             onChanged: (value) {
@@ -178,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
           ElevatedButton(
             onPressed: () async {
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -187,12 +216,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(updated ? 'Profile updated' : 'Failed to update profile'),
+                    content: Text(updated ? 'Профиль обновлен' : 'Не удалось обновить профиль'),
                   ),
                 );
               }
             },
-            child: const Text('Save'),
+            child: const Text('Сохранить'),
           ),
         ],
       ),
@@ -203,17 +232,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: const Text('Выход'),
+        content: const Text('Вы уверены, что хотите выйти?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               Provider.of<AuthProvider>(context, listen: false).logout();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Logout'),
+            child: const Text('Выйти'),
           ),
         ],
       ),

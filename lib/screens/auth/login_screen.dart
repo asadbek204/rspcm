@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -17,14 +18,23 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
+  @override
+  void dispose() {
+    _identifierController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _handleLogin() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     try {
       await auth.login(_identifierController.text.trim(), _passwordController.text);
+      if (!mounted) return;
+      TextInput.finishAutofillContext(shouldSave: true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: ${e.toString()}')),
+        SnackBar(content: Text('Не удалось войти: ${e.toString()}')),
       );
     }
   }
@@ -66,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 30),
                   Text(
-                    'Welcome Back',
+                    'С возвращением',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: themeProvider.themeType == AppThemeType.darkGold || themeProvider.themeType == AppThemeType.darkEmerald
@@ -76,26 +86,38 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Sign in to continue to RSPCM',
+                    'Войдите, чтобы продолжить работу в RSPCM',
                     style: TextStyle(color: Colors.grey.shade500),
                   ),
                   const SizedBox(height: 50),
-                  _buildTextField(
-                    controller: _identifierController,
-                    hint: 'Email or University ID',
-                    icon: Icons.person_outline,
-                    theme: theme,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    controller: _passwordController,
-                    hint: 'Password',
-                    icon: Icons.lock_outline,
-                    obscure: _obscurePassword,
-                    theme: theme,
-                    suffix: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 20),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  AutofillGroup(
+                    child: Column(
+                      children: [
+                        _buildTextField(
+                          controller: _identifierController,
+                          hint: 'Email или ID университета',
+                          icon: Icons.person_outline,
+                          autofillHints: const [AutofillHints.username, AutofillHints.email],
+                          textInputAction: TextInputAction.next,
+                          keyboardType: TextInputType.emailAddress,
+                          theme: theme,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildTextField(
+                          controller: _passwordController,
+                          hint: 'Пароль',
+                          icon: Icons.lock_outline,
+                          obscure: _obscurePassword,
+                          autofillHints: const [AutofillHints.password],
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _handleLogin(),
+                          theme: theme,
+                          suffix: IconButton(
+                            icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 20),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 15),
@@ -103,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {},
-                      child: Text('Forgot Password?', style: TextStyle(color: theme.primaryColor)),
+                      child: Text('Забыли пароль?', style: TextStyle(color: theme.primaryColor)),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -122,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: auth.isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              : const Text('Войти', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       );
                     },
@@ -131,13 +153,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Don't have an account?"),
+                      const Text('Нет аккаунта?'),
                       TextButton(
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => const RegisterScreen()),
                         ),
-                        child: Text('Register', style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold)),
+                        child: Text('Регистрация', style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -154,6 +176,10 @@ class _LoginScreenState extends State<LoginScreen> {
     required TextEditingController controller,
     required String hint,
     required IconData icon,
+    List<String>? autofillHints,
+    TextInputAction? textInputAction,
+    TextInputType? keyboardType,
+    ValueChanged<String>? onSubmitted,
     bool obscure = false,
     Widget? suffix,
     required ThemeData theme,
@@ -167,6 +193,10 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextField(
         controller: controller,
         obscureText: obscure,
+        autofillHints: autofillHints,
+        textInputAction: textInputAction,
+        keyboardType: keyboardType,
+        onSubmitted: onSubmitted,
         decoration: InputDecoration(
           hintText: hint,
           prefixIcon: Icon(icon, color: theme.primaryColor, size: 22),

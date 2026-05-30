@@ -50,8 +50,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final date = DateTime(p.deadline.year, p.deadline.month, p.deadline.day);
       _events.update(
         date,
-        (list) => list..add('Deadline: ${p.title}'),
-        ifAbsent: () => ['Deadline: ${p.title}'],
+        (list) => list..add('Срок: ${p.title}'),
+        ifAbsent: () => ['Срок: ${p.title}'],
       );
     }
 
@@ -60,8 +60,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final date = DateTime(j.submittedAt.year, j.submittedAt.month, j.submittedAt.day);
       _events.update(
         date,
-        (list) => list..add('Logged: ${j.content}'),
-        ifAbsent: () => ['Logged: ${j.content}'],
+        (list) => list..add('Записано: ${j.content}'),
+        ifAbsent: () => ['Записано: ${j.content}'],
       );
     }
   }
@@ -152,7 +152,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           children: [
             Icon(Icons.event_note, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
             const SizedBox(height: 10),
-            const Text('No tasks or deadlines for this day', style: TextStyle(color: Colors.grey)),
+            const Text('На этот день нет задач или сроков', style: TextStyle(color: Colors.grey)),
           ],
         ),
       );
@@ -163,7 +163,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       itemCount: selectedEvents.length,
       itemBuilder: (context, index) {
         final event = selectedEvents[index];
-        final isDeadline = event.contains('Deadline');
+        final isDeadline = event.startsWith('Срок:');
         
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -197,7 +197,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _showAddTaskDialog(BuildContext context) {
     if (_practices.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No active practices to log tasks for.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Нет активных практик для записи задачи.')));
       return;
     }
 
@@ -208,7 +208,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Log Daily Task'),
+          title: const Text('Добавить задачу на день'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -218,13 +218,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 onChanged: (val) {
                   if (val != null) setDialogState(() => selectedPracticeId = val);
                 },
-                decoration: const InputDecoration(labelText: 'Select Practice'),
+                decoration: const InputDecoration(labelText: 'Выберите практику'),
               ),
               const SizedBox(height: 15),
               TextField(
                 controller: controller,
                 decoration: const InputDecoration(
-                  hintText: 'What did you work on today?',
+                  hintText: 'Над чем вы работали сегодня?',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
@@ -232,7 +232,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
             ElevatedButton(
               onPressed: () async {
                 if (controller.text.isNotEmpty) {
@@ -243,7 +243,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   }
                 }
               },
-              child: const Text('Save'),
+              child: const Text('Сохранить'),
             ),
           ],
         ),

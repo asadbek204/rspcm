@@ -1,5 +1,6 @@
 class ApiEndpoints {
-  static const String baseUrl = 'http://localhost:8080/api';
+  // Real device (phone) must use your computer LAN IP, not localhost.
+  static const String baseUrl = 'http://10.230.207.102:8080/api';
 
   // Auth
   static const String login = '/auth/login';
@@ -55,4 +56,8 @@ class ApiEndpoints {
 
   // Practice submissions
   static const String practiceSubmissions = '/practice-submissions'; // /participation/{id}, /participation/{id}/submit
+
+  // Chat
+  static const String myChats = '/chats/me';
+  static const String chats = '/chats'; // /{chatId}/messages
 }

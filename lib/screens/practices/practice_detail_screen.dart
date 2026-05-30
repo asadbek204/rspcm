@@ -2,167 +2,314 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import 'package:intl/intl.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PracticeDetailScreen extends StatefulWidget {
   final Practice practice;
-  const PracticeDetailScreen({super.key, required this.practice});
+  /// Participation ID, if already known from the list screen.
+  final int? participationId;
+
+  const PracticeDetailScreen({
+    super.key,
+    required this.practice,
+    this.participationId,
+  });
 
   @override
   State<PracticeDetailScreen> createState() => _PracticeDetailScreenState();
 }
 
-class _PracticeDetailScreenState extends State<PracticeDetailScreen> {
-  final ApiService _apiService = ApiService();
-  PracticeTeamResponse? _teamData;
-  bool _isLoadingTeam = false;
-  String? _uploadedFileName;
-  bool _isSubmitting = false;
+class _PracticeDetailScreenState extends State<PracticeDetailScreen>
+    with SingleTickerProviderStateMixin {
+  final ApiService _api = ApiService();
+  late TabController _tabController;
+
+  // State
+  PracticeTeamResponse? _team;
+  PracticeSubmission? _submission;
+  List<PracticeJournal> _journals = [];
+  bool _loading = true;
+
+  // Submission form
+  final _submissionController = TextEditingController();
+  bool _submitting = false;
+
+  // Journal form
+  final _journalController = TextEditingController();
+  bool _savingJournal = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.practice.workMode == 'TEAM') {
-      _fetchTeamData();
-    }
+    final tabs = widget.practice.calendarRequired ? 3 : 2;
+    _tabController = TabController(length: tabs, vsync: this);
+    _load();
   }
 
-  Future<void> _fetchTeamData() async {
-    setState(() => _isLoadingTeam = true);
-    final data = await _apiService.getTeamByPractice(widget.practice.id);
-    if (mounted) {
-      setState(() {
-        _teamData = data;
-        _isLoadingTeam = false;
-      });
-    }
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _submissionController.dispose();
+    _journalController.dispose();
+    super.dispose();
   }
 
-  Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.pickFiles();
-    if (result != null) {
-      setState(() {
-        _uploadedFileName = result.files.single.name;
-      });
+  Future<void> _load() async {
+    setState(() => _loading = true);
+
+    final futures = <Future>[
+      if (widget.practice.workMode == 'TEAM') _api.getTeamByPractice(widget.practice.id),
+      _api.getMyJournals(),
+    ];
+
+    if (widget.participationId != null) {
+      futures.add(_api.getPracticeSubmissionByParticipation(widget.participationId!));
     }
-  }
 
-  Future<void> _handleSubmit() async {
-    if (_uploadedFileName == null) return;
-    
-    setState(() => _isSubmitting = true);
-    // Note: In a real app, you'd upload the file to a storage service first and get a URL/Path
-    // Here we're simulating the link between the practice and a journal entry for the submission
-    final success = await _apiService.createJournal(
-      widget.practice.id, 
-      'Final submission: $_uploadedFileName',
-      teamId: _teamData?.id,
-      filePath: _uploadedFileName, // Simplified
-    );
+    final results = await Future.wait(futures.map((f) => f.catchError((_) => null)));
 
-    if (mounted) {
-      setState(() => _isSubmitting = false);
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submission successful!')));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submission failed. Please try again.')));
+    if (!mounted) return;
+    setState(() {
+      int idx = 0;
+      if (widget.practice.workMode == 'TEAM') {
+        _team = results[idx++] as PracticeTeamResponse?;
       }
+      final allJournals = results[idx++] as List<PracticeJournal>? ?? [];
+      _journals = allJournals
+          .where((j) => j.practiceId == widget.practice.id)
+          .toList()
+        ..sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+      if (widget.participationId != null) {
+        _submission = results[idx] as PracticeSubmission?;
+        if (_submission != null) {
+          _submissionController.text = _submission!.textAnswer;
+        }
+      }
+      _loading = false;
+    });
+  }
+
+  Future<void> _submitWork() async {
+    if (widget.participationId == null) return;
+    final text = _submissionController.text.trim();
+    if (text.isEmpty) {
+      _showSnack('Введите текст работы перед отправкой', error: true);
+      return;
     }
+    setState(() => _submitting = true);
+    final ok = await _api.submitPracticeSubmission(
+      widget.participationId!,
+      textAnswer: text,
+    );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (ok) {
+      _showSnack('Работа успешно отправлена');
+      _load();
+    } else {
+      _showSnack('Не удалось отправить работу', error: true);
+    }
+  }
+
+  Future<void> _saveJournalEntry() async {
+    final content = _journalController.text.trim();
+    if (content.isEmpty) {
+      _showSnack('Введите текст записи', error: true);
+      return;
+    }
+    setState(() => _savingJournal = true);
+    final ok = await _api.createJournal(widget.practice.id, content);
+    if (!mounted) return;
+    setState(() => _savingJournal = false);
+    if (ok) {
+      _journalController.clear();
+      _showSnack('Запись сохранена');
+      _load();
+    } else {
+      _showSnack('Не удалось сохранить запись', error: true);
+    }
+  }
+
+  void _showSnack(String msg, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: error ? Colors.red.shade700 : Colors.green.shade700,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tabs = widget.practice.calendarRequired ? 3 : 2;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Practice Details')),
-      body: RefreshIndicator(
-        onRefresh: widget.practice.workMode == 'TEAM' ? _fetchTeamData : () async {},
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              _buildInfoCard(theme),
-              const SizedBox(height: 30),
-              if (widget.practice.workMode == 'TEAM') ...[
-                _buildTeamSection(theme),
-                const SizedBox(height: 30),
-              ],
-              _buildUploadSection(theme),
-              const SizedBox(height: 30),
-              _buildTestSection(theme),
-            ],
-          ),
+      appBar: AppBar(
+        title: Text(
+          widget.practice.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          if (widget.practice.resourceUrl != null)
+            IconButton(
+              icon: const Icon(Icons.open_in_new),
+              tooltip: 'Открыть ресурс',
+              onPressed: () => launchUrl(Uri.parse(widget.practice.resourceUrl!)),
+            ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            const Tab(text: 'Информация'),
+            const Tab(text: 'Сдача работы'),
+            if (tabs == 3) const Tab(text: 'Дневник'),
+          ],
         ),
       ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildInfoTab(theme),
+                _buildSubmissionTab(theme),
+                if (tabs == 3) _buildJournalTab(theme),
+              ],
+            ),
     );
   }
 
-  Widget _buildInfoCard(ThemeData theme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  // ─── Tab 1: Info ─────────────────────────────────────────────────────────
+
+  Widget _buildInfoTab(ThemeData theme) {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  widget.practice.title,
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-              if (widget.practice.resourceUrl != null)
-                IconButton(
-                  icon: Icon(Icons.open_in_new, color: theme.primaryColor),
-                  onPressed: () => launchUrl(Uri.parse(widget.practice.resourceUrl!)),
-                  tooltip: 'Open Resource',
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            widget.practice.description.isNotEmpty 
-                ? widget.practice.description 
-                : 'No description provided.',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-          if (widget.practice.requirements != null && widget.practice.requirements!.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const Text('Requirements', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 5),
-            Text(widget.practice.requirements!, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          _buildMetaCard(theme),
+          if (widget.practice.description.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildSection(theme, 'Описание', widget.practice.description),
           ],
-          const Divider(height: 30),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildDetailItem('Deadline', DateFormat('dd MMM, yyyy').format(widget.practice.deadline), theme),
-              _buildDetailItem('Work Mode', widget.practice.workMode, theme),
-              _buildDetailItem('Team Size', '${widget.practice.teamSize}', theme),
-            ],
-          ),
+          if ((widget.practice.requirements ?? '').isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildSection(theme, 'Требования', widget.practice.requirements!),
+          ],
+          if (widget.practice.workMode == 'TEAM') ...[
+            const SizedBox(height: 20),
+            _buildTeamSection(theme),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildDetailItem(String label, String value, ThemeData theme) {
+  Widget _buildMetaCard(ThemeData theme) {
+    final daysLeft = widget.practice.deadline.difference(DateTime.now()).inDays;
+    final isOverdue = daysLeft < 0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.practice.title,
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _chip(
+                isOverdue ? 'Просрочено' : 'Активна',
+                isOverdue ? Colors.red : Colors.green,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _metaRow(theme, Icons.calendar_today_outlined,
+            'Срок: ${DateFormat('dd MMM yyyy', 'ru_RU').format(widget.practice.deadline)}',
+            isOverdue ? Colors.red : null,
+          ),
+          const SizedBox(height: 8),
+          _metaRow(theme,
+            widget.practice.workMode == 'TEAM' ? Icons.group_outlined : Icons.person_outline,
+            widget.practice.workMode == 'TEAM'
+                ? 'Командная работа · макс. ${widget.practice.teamSize} чел.'
+                : 'Индивидуальная работа',
+          ),
+          if (widget.practice.calendarRequired) ...[
+            const SizedBox(height: 8),
+            _metaRow(theme, Icons.book_outlined, 'Требуется вести дневник практики',
+              theme.primaryColor),
+          ],
+          if (!isOverdue) ...[
+            const SizedBox(height: 16),
+            _deadlineProgress(theme, daysLeft),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _deadlineProgress(ThemeData theme, int daysLeft) {
+    const total = 30;
+    final fraction = (daysLeft / total).clamp(0.0, 1.0);
+    final color = daysLeft <= 3
+        ? Colors.red
+        : daysLeft <= 7
+            ? Colors.orange
+            : theme.primaryColor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Осталось дней', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            Text('$daysLeft', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 8,
+            backgroundColor: Colors.grey.withValues(alpha: 0.15),
+            color: color,
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildSection(ThemeData theme, String title, String content) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: theme.textTheme.labelLarge?.copyWith(
+                  color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text(content, style: const TextStyle(height: 1.5)),
+        ],
+      ),
     );
   }
 
@@ -170,170 +317,371 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _teamData != null ? 'Team: ${_teamData!.name}' : 'Team Members', 
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)
-            ),
-            if (_teamData == null && !_isLoadingTeam)
-              TextButton.icon(
-                onPressed: () => _showInviteDialog(context),
-                icon: const Icon(Icons.group_add_outlined),
-                label: const Text('Create Team'),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        if (_isLoadingTeam)
-          const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
-        else if (_teamData == null)
+        Text('Команда',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        if (_team == null)
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: theme.cardColor,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
             ),
-            child: const Center(child: Text('You are not in a team for this practice yet.', style: TextStyle(color: Colors.grey))),
+            child: Row(
+              children: [
+                Icon(Icons.group_add_outlined, color: Colors.grey.shade500),
+                const SizedBox(width: 12),
+                Text('Вы ещё не в команде для этой практики',
+                    style: TextStyle(color: Colors.grey.shade600)),
+              ],
+            ),
           )
         else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _teamData!.members.length,
-            itemBuilder: (context, index) {
-              final member = _teamData!.members[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
-                  child: Text(member.firstName.length > 0 ? member.firstName.substring(0, 1) : '?', style: TextStyle(color: theme.primaryColor)),
+          ..._team!.members.map(
+            (m) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
+                child: Text(
+                  m.firstName.isNotEmpty ? m.firstName[0].toUpperCase() : '?',
+                  style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold),
                 ),
-                title: Text('${member.firstName} ${member.lastName}'),
-                subtitle: Text(member.email),
-              );
-            },
+              ),
+              title: Text('${m.firstName} ${m.lastName}',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(m.email, style: TextStyle(color: Colors.grey.shade600)),
+            ),
           ),
       ],
     );
   }
 
-  Widget _buildUploadSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Submit Results', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 15),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: theme.primaryColor.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: theme.primaryColor.withValues(alpha: 0.2)),
-          ),
+  // ─── Tab 2: Submission ─────────────────────────────────────────────────────
+
+  Widget _buildSubmissionTab(ThemeData theme) {
+    if (widget.participationId == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              if (_uploadedFileName == null) ...[
-                Icon(Icons.cloud_upload_outlined, size: 48, color: theme.primaryColor),
-                const SizedBox(height: 10),
-                const Text('Upload your practice files'),
-                const SizedBox(height: 15),
-                ElevatedButton(onPressed: _pickFile, child: const Text('Browse Files')),
-              ] else ...[
-                const Icon(Icons.insert_drive_file, size: 48, color: Colors.green),
-                const SizedBox(height: 10),
-                Text(_uploadedFileName!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 15),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(onPressed: _isSubmitting ? null : _pickFile, child: const Text('Change')),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: _isSubmitting ? null : _handleSubmit, 
-                      child: _isSubmitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Submit')
-                    ),
-                  ],
-                ),
-              ],
+              Icon(Icons.lock_outline, size: 64, color: Colors.grey.shade400),
+              const SizedBox(height: 16),
+              Text(
+                'Сдача работы доступна только через экран экзамена, когда выбрана практика.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600, height: 1.5),
+              ),
             ],
           ),
         ),
-      ],
+      );
+    }
+
+    final isGraded = _submission?.status == 'GRADED';
+    final isSubmitted = _submission?.status == 'SUBMITTED';
+    final isReturned = _submission?.status == 'RETURNED';
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_submission != null) _buildSubmissionStatusBanner(theme, _submission!),
+            if (_submission != null) const SizedBox(height: 20),
+
+            Text('Текст работы',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+
+            TextField(
+              controller: _submissionController,
+              maxLines: 8,
+              enabled: !isGraded && !isSubmitted,
+              decoration: InputDecoration(
+                hintText: 'Опишите выполненную работу...',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: theme.primaryColor),
+                ),
+                filled: true,
+                fillColor: theme.cardColor,
+                contentPadding: const EdgeInsets.all(16),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            if (!isGraded && !isSubmitted)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submitting ? null : _submitWork,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text(
+                          isReturned ? 'Отправить повторно' : 'Отправить работу',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                ),
+              ),
+
+            if (isGraded)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green),
+                    SizedBox(width: 12),
+                    Text('Работа проверена. Редактирование недоступно.',
+                        style: TextStyle(fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildTestSection(ThemeData theme) {
+  Widget _buildSubmissionStatusBanner(ThemeData theme, PracticeSubmission submission) {
+    Color bg;
+    Color fg;
+    IconData icon;
+    String label;
+
+    switch (submission.status) {
+      case 'SUBMITTED':
+        bg = Colors.blue.withValues(alpha: 0.08);
+        fg = Colors.blue.shade700;
+        icon = Icons.hourglass_top_outlined;
+        label = 'На проверке';
+        break;
+      case 'GRADED':
+        bg = Colors.green.withValues(alpha: 0.08);
+        fg = Colors.green.shade700;
+        icon = Icons.check_circle_outline;
+        label = 'Проверено';
+        break;
+      case 'RETURNED':
+        bg = Colors.orange.withValues(alpha: 0.08);
+        fg = Colors.orange.shade700;
+        icon = Icons.reply_outlined;
+        label = 'Возвращено на доработку';
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: fg.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.quiz_outlined, color: Colors.orange),
-              SizedBox(width: 10),
-              Text('Assessment Required', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+              Icon(icon, color: fg, size: 20),
+              const SizedBox(width: 10),
+              Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
             ],
           ),
-          const SizedBox(height: 10),
-          const Text('Some practices require a mandatory test after completion.'),
-          const SizedBox(height: 15),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {}, // Navigate to Assignment screen in future
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-              child: const Text('View Assessments'),
-            ),
-          ),
+          if (submission.teacherComment.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text('Комментарий преподавателя:',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(submission.teacherComment, style: const TextStyle(height: 1.4)),
+          ],
         ],
       ),
     );
   }
 
-  void _showInviteDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final membersController = TextEditingController();
+  // ─── Tab 3: Journal / Logbook ─────────────────────────────────────────────
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Practice Team'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Team Name')),
-            const SizedBox(height: 10),
-            TextField(controller: membersController, decoration: const InputDecoration(labelText: 'Member IDs (comma separated)')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final memberIds = membersController.text.split(',').map((e) => int.tryParse(e.trim()) ?? 0).where((e) => e != 0).toList();
-              final success = await _apiService.createTeam(widget.practice.id, nameController.text, memberIds);
-              if (mounted) {
-                Navigator.pop(context);
-                if (success) {
-                  _fetchTeamData();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Team created!')));
-                }
-              }
-            }, 
-            child: const Text('Create')
+  Widget _buildJournalTab(ThemeData theme) {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          // Prompt banner
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.primaryColor.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.book_outlined, color: theme.primaryColor),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Дневник практики',
+                          style: TextStyle(
+                              color: theme.primaryColor, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Ежедневно записывайте, что вы делали по практике. Это поможет составить итоговый отчёт.',
+                        style: TextStyle(height: 1.4, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+
+          const SizedBox(height: 20),
+
+          // New entry form
+          Text('Запись за сегодня',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _journalController,
+            maxLines: 5,
+            decoration: InputDecoration(
+              hintText: 'Что вы сделали сегодня по практике?',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: theme.primaryColor),
+              ),
+              filled: true,
+              fillColor: theme.cardColor,
+              contentPadding: const EdgeInsets.all(16),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _savingJournal ? null : _saveJournalEntry,
+              icon: _savingJournal
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.save_outlined, size: 18),
+              label: const Text('Сохранить запись',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          if (_journals.isNotEmpty) ...[
+            Text('История записей (${_journals.length})',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ..._journals.map((j) => _buildJournalCard(theme, j)),
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Center(
+                child: Text('Записей пока нет',
+                    style: TextStyle(color: Colors.grey.shade500)),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildJournalCard(ThemeData theme, PracticeJournal journal) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade500),
+              const SizedBox(width: 6),
+              Text(
+                DateFormat('dd MMM yyyy, HH:mm', 'ru_RU').format(journal.submittedAt),
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(journal.content, style: const TextStyle(height: 1.5)),
+        ],
+      ),
+    );
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  Widget _chip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(label,
+          style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _metaRow(ThemeData theme, IconData icon, String text, [Color? color]) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color ?? Colors.grey.shade600),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: color ?? Colors.grey.shade700, fontSize: 13),
+          ),
+        ),
+      ],
     );
   }
 }

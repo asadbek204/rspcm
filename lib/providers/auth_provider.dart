@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../models/auth_models.dart';
 import '../models/models.dart';
 
@@ -33,6 +34,7 @@ class AuthProvider with ChangeNotifier {
         final profile = await _apiService.getMyProfile();
         if (profile != null) {
           _profile = profile;
+          NotificationService().init().catchError((_) {});
         } else {
           await logout();
           return;
@@ -93,6 +95,9 @@ class AuthProvider with ChangeNotifier {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', _token!);
+
+      // Register FCM token for push notifications
+      NotificationService().init().catchError((_) {});
     } catch (e) {
       _isAuthenticated = false;
       rethrow;

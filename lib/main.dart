@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,13 +12,22 @@ import 'screens/dashboard/notifications_screen.dart';
 import 'screens/calendar/calendar_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/auth/login_screen.dart';
-import 'widgets/app_drawer.dart';
 import 'screens/exams/exams_list_screen.dart';
+import 'screens/practices/practices_list_screen.dart';
+import 'widgets/app_drawer.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  initializeDateFormatting('ru_RU');
+  await initializeDateFormatting('ru_RU');
   Intl.defaultLocale = 'ru_RU';
+
+  // Firebase — gracefully skip if google-services.json is not present (dev without Firebase)
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {
+    // Firebase not configured — push notifications will be unavailable
+  }
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -65,9 +75,10 @@ class _StartupLoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final theme = Theme.of(context);
+    return Scaffold(
       body: Center(
-        child: CircularProgressIndicator(),
+        child: CircularProgressIndicator(color: theme.primaryColor),
       ),
     );
   }
@@ -85,9 +96,10 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<String> _titles = [
     'Панель RSPCM',
-    'Календарь практик',
-    'Мои экзамены',
-    'Настройки',
+    'Практики',
+    'Календарь',
+    'Экзамены',
+    'Профиль',
   ];
 
   void _onItemTapped(int index) {
@@ -98,8 +110,10 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final List<Widget> screens = [
       DashboardScreen(onTabSelected: (i) => _onItemTapped(i)),
+      const PracticesListScreen(),
       const CalendarScreen(),
       const ExamsListScreen(),
       const ProfileScreen(),
@@ -130,11 +144,19 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_outlined),
             activeIcon: Icon(Icons.dashboard),
             label: 'Главная',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment_outlined),
+            activeIcon: Icon(Icons.assignment),
+            label: 'Практики',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today_outlined),

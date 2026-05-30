@@ -475,4 +475,20 @@ class ApiService {
       return false;
     }
   }
+
+  Future<void> registerFcmToken(String token) async {
+    try {
+      await _apiClient.post(ApiEndpoints.fcmToken, {'token': token});
+    } catch (e) {
+      print('API Error (Register FCM Token): $e');
+    }
+  }
+
+  Future<void> unregisterFcmToken(String token) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.fcmToken}?token=$token');
+    } catch (e) {
+      print('API Error (Unregister FCM Token): $e');
+    }
+  }
 }

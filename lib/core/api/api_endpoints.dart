@@ -60,4 +60,7 @@ class ApiEndpoints {
   // Chat
   static const String myChats = '/chats/me';
   static const String chats = '/chats'; // /{chatId}/messages
+
+  // FCM Push Notifications
+  static const String fcmToken = '/fcm/token';
 }

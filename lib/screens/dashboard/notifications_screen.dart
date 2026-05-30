@@ -9,6 +9,7 @@ class NotificationModel {
   final DateTime timestamp;
   final bool isRead;
   final IconData icon;
+  final Color iconColor;
   final int? participationId;
 
   NotificationModel({
@@ -18,6 +19,7 @@ class NotificationModel {
     required this.timestamp,
     this.isRead = false,
     this.icon = Icons.notifications,
+    this.iconColor = Colors.blue,
     this.participationId,
   });
 }
@@ -30,37 +32,51 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final ApiService _apiService = ApiService();
-  bool _isLoading = true;
+  final ApiService _api = ApiService();
+  bool _loading = true;
   List<NotificationModel> _notifications = [];
 
   @override
   void initState() {
     super.initState();
-    _fetchNotifications();
+    _load();
   }
 
-  Future<void> _fetchNotifications() async {
-    final invitations = await _apiService.getMyTeamInvitations();
-    final exams = await _apiService.getMyExams();
+  Future<void> _load() async {
+    setState(() => _loading = true);
+
+    final results = await Future.wait([
+      _api.getMyTeamInvitations().catchError((_) => []),
+      _api.getMyExams().catchError((_) => []),
+    ]);
+
+    final invitations = results[0] as List;
+    final exams = results[1] as List;
 
     final items = <NotificationModel>[
       ...invitations.map((inv) => NotificationModel(
             id: 'inv-${inv.participationId}',
             title: 'Приглашение в команду',
-            body: '${inv.invitedByName.isEmpty ? 'Студент' : inv.invitedByName} пригласил(а) вас в практику ${inv.practiceName}.',
+            body:
+                '${inv.invitedByName.isEmpty ? 'Студент' : inv.invitedByName} пригласил(а) вас в практику «${inv.practiceName}».',
             timestamp: DateTime.now(),
-            icon: Icons.group_add,
+            icon: Icons.group_add_outlined,
+            iconColor: Colors.deepPurple,
+            isRead: false,
             participationId: inv.participationId,
           )),
-      ...exams.where((e) => e.endAt != null).map((exam) => NotificationModel(
-            id: 'exam-${exam.id}',
-            title: 'Срок экзамена',
-            body: '${exam.title} завершится ${DateFormat('dd MMM, HH:mm', 'ru_RU').format(exam.endAt!)}',
-            timestamp: exam.endAt!,
-            icon: Icons.timer,
-            isRead: true,
-          )),
+      ...exams
+          .where((e) => e.endAt != null)
+          .map((exam) => NotificationModel(
+                id: 'exam-${exam.id}',
+                title: 'Срок экзамена',
+                body:
+                    '«${exam.title}» завершится ${DateFormat('dd MMM, HH:mm', 'ru_RU').format(exam.endAt!)}',
+                timestamp: exam.endAt!,
+                icon: Icons.timer_outlined,
+                iconColor: Colors.orange,
+                isRead: true,
+              )),
     ];
 
     items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -68,143 +84,139 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (!mounted) return;
     setState(() {
       _notifications = items;
-      _isLoading = false;
+      _loading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Уведомления'),
-      ),
-      body: _notifications.isEmpty
-          ? _buildEmptyState(theme)
-          : RefreshIndicator(
-              onRefresh: _fetchNotifications,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                itemCount: _notifications.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final notification = _notifications[index];
-                  return _buildNotificationItem(context, notification, theme);
-                },
-              ),
-            ),
+      appBar: AppBar(title: const Text('Уведомления')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _notifications.isEmpty
+              ? _buildEmpty(theme)
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _notifications.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, indent: 72),
+                    itemBuilder: (context, index) =>
+                        _buildItem(context, _notifications[index], theme),
+                  ),
+                ),
     );
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-}
-
-class _NotificationView extends StatelessWidget {
-  final NotificationModel item;
-  final ThemeData theme;
-  final VoidCallback? onAccept;
-  final VoidCallback? onDecline;
-
-  const _NotificationView({
-    required this.item,
-    required this.theme,
-    this.onAccept,
-    this.onDecline,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: item.isRead ? Colors.transparent : theme.primaryColor.withValues(alpha: 0.05),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
-          child: Icon(item.icon, color: theme.primaryColor, size: 20),
-        ),
-        title: Text(
-          item.title,
-          style: TextStyle(
-            fontWeight: item.isRead ? FontWeight.normal : FontWeight.bold,
-            fontSize: 16,
+  Widget _buildItem(
+      BuildContext context, NotificationModel item, ThemeData theme) {
+    return Dismissible(
+      key: Key(item.id),
+      direction: item.participationId != null
+          ? DismissDirection.none
+          : DismissDirection.endToStart,
+      background: Container(
+        color: Colors.red.shade400,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(Icons.delete_outline, color: Colors.white),
+      ),
+      onDismissed: (_) {
+        setState(() => _notifications.removeWhere((n) => n.id == item.id));
+      },
+      child: Container(
+        color: item.isRead
+            ? Colors.transparent
+            : theme.primaryColor.withValues(alpha: 0.04),
+        child: ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          leading: CircleAvatar(
+            radius: 22,
+            backgroundColor: item.iconColor.withValues(alpha: 0.12),
+            child: Icon(item.icon, color: item.iconColor, size: 20),
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 5),
-            Text(item.body, style: TextStyle(color: Colors.grey.shade600)),
-            const SizedBox(height: 8),
-            Text(
-              DateFormat('MMM dd, hh:mm a').format(item.timestamp),
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+          title: Text(
+            item.title,
+            style: TextStyle(
+              fontWeight: item.isRead ? FontWeight.normal : FontWeight.bold,
+              fontSize: 14,
             ),
-          ],
-        ),
-        onTap: () {},
-        trailing: item.participationId == null
-            ? null
-            : Wrap(
-                spacing: 6,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: onDecline,
-                    tooltip: 'Отклонить',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.check, size: 18),
-                    onPressed: onAccept,
-                    tooltip: 'Принять',
-                  ),
-                ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Text(item.body,
+                  style: TextStyle(
+                      color: Colors.grey.shade600, fontSize: 13, height: 1.4)),
+              const SizedBox(height: 6),
+              Text(
+                DateFormat('dd MMM, HH:mm', 'ru_RU').format(item.timestamp),
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
               ),
+            ],
+          ),
+          trailing: item.participationId == null
+              ? null
+              : _buildInvitationActions(context, item),
+          isThreeLine: true,
+        ),
       ),
     );
   }
-}
 
-Widget _buildNotificationItem(BuildContext context, NotificationModel item, ThemeData theme) {
-  final state = context.findAncestorStateOfType<_NotificationsScreenState>();
-  return _NotificationView(
-    item: item,
-    theme: theme,
-    onDecline: item.participationId == null || state == null
-        ? null
-        : () async {
-            final ok = await state._apiService.declineTeamInvitation(item.participationId!);
-            if (!state.mounted) return;
-            if (ok) {
-              await state._fetchNotifications();
-            }
-          },
-    onAccept: item.participationId == null || state == null
-        ? null
-        : () async {
-            final ok = await state._apiService.acceptTeamInvitation(item.participationId!);
-            if (!state.mounted) return;
-            if (ok) {
-              await state._fetchNotifications();
-            }
-          },
-  );
-}
-
-Widget _buildEmptyState(ThemeData theme) {
-  return Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildInvitationActions(BuildContext context, NotificationModel item) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.notifications_off_outlined, size: 80, color: Colors.grey.shade300),
-        const SizedBox(height: 20),
-        const Text('Пока нет уведомлений', style: TextStyle(color: Colors.grey, fontSize: 18)),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.close, color: Colors.red, size: 20),
+          tooltip: 'Отклонить',
+          onPressed: () async {
+            final ok = await _api.declineTeamInvitation(item.participationId!);
+            if (!mounted) return;
+            if (ok) _load();
+          },
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.check, color: Colors.green, size: 20),
+          tooltip: 'Принять',
+          onPressed: () async {
+            final ok = await _api.acceptTeamInvitation(item.participationId!);
+            if (!mounted) return;
+            if (ok) _load();
+          },
+        ),
       ],
-    ),
-  );
+    );
+  }
+
+  Widget _buildEmpty(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notifications_none_outlined,
+              size: 80, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text('Нет уведомлений',
+              style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          Text('Приглашения в команды и\nдедлайны появятся здесь',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+        ],
+      ),
+    );
+  }
 }

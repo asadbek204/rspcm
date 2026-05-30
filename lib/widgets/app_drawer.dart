@@ -6,6 +6,7 @@ import '../screens/chat/chats_list_screen.dart';
 import '../screens/chat/groups_list_screen.dart';
 import '../screens/subjects/subjects_list_screen.dart';
 import '../screens/exams/exams_list_screen.dart';
+import '../screens/practices/practices_list_screen.dart';
 
 class AppDrawer extends StatefulWidget {
   final Function(int) onTabSelected;
@@ -47,7 +48,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   title: 'Практики',
                   onTap: () {
                     Navigator.pop(context);
-                    widget.onTabSelected(2);
+                    widget.onTabSelected(1);
                   },
                 ),
                 _buildDrawerItem(

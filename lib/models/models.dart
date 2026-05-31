@@ -486,6 +486,277 @@ class PracticeSubmission {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Teacher Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+class SubjectSummaryModel {
+  final int id;
+  final String name;
+  final String description;
+
+  SubjectSummaryModel({required this.id, required this.name, required this.description});
+
+  factory SubjectSummaryModel.fromJson(Map<String, dynamic> json) {
+    return SubjectSummaryModel(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+    );
+  }
+}
+
+class GroupSummaryModel {
+  final int id;
+  final String name;
+  final String language;
+
+  GroupSummaryModel({required this.id, required this.name, required this.language});
+
+  factory GroupSummaryModel.fromJson(Map<String, dynamic> json) {
+    return GroupSummaryModel(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      language: json['language']?.toString() ?? '',
+    );
+  }
+}
+
+class TeacherProfileModel {
+  final int id;
+  final int userId;
+  final String firstName;
+  final String lastName;
+  final String email;
+  final String academicDegree;
+  final List<SubjectSummaryModel> teachingSubjects;
+
+  TeacherProfileModel({
+    required this.id,
+    required this.userId,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+    required this.academicDegree,
+    required this.teachingSubjects,
+  });
+
+  factory TeacherProfileModel.fromJson(Map<String, dynamic> json) {
+    final user = (json['user'] ?? {}) as Map<String, dynamic>;
+    return TeacherProfileModel(
+      id: json['id'] ?? 0,
+      userId: user['id'] ?? 0,
+      firstName: user['firstName'] ?? '',
+      lastName: user['lastName'] ?? '',
+      email: user['email'] ?? '',
+      academicDegree: json['academicDegree'] ?? '',
+      teachingSubjects: (json['teachingSubjects'] as List? ?? [])
+          .map((s) => SubjectSummaryModel.fromJson(s as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class TeacherGroup {
+  final int id;
+  final String name;
+  final String description;
+  final String language;
+  final List<StudentSummary> students;
+
+  TeacherGroup({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.language,
+    required this.students,
+  });
+
+  factory TeacherGroup.fromJson(Map<String, dynamic> json) {
+    return TeacherGroup(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      language: json['language']?.toString() ?? '',
+      students: (json['students'] as List? ?? [])
+          .map((s) => StudentSummary.fromJson(s as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class TeacherPractice {
+  final int id;
+  final String name;
+  final String description;
+  final String? resourceUrl;
+  final String? requirements;
+  final String workMode; // INDIVIDUAL, TEAM
+  final bool calendarRequired;
+  final String? subjectName;
+
+  TeacherPractice({
+    required this.id,
+    required this.name,
+    required this.description,
+    this.resourceUrl,
+    this.requirements,
+    required this.workMode,
+    required this.calendarRequired,
+    this.subjectName,
+  });
+
+  factory TeacherPractice.fromJson(Map<String, dynamic> json) {
+    final subject = json['subject'] as Map<String, dynamic>?;
+    return TeacherPractice(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      resourceUrl: json['resourceUrl'],
+      requirements: json['requirements'],
+      workMode: json['workMode']?.toString() ?? 'INDIVIDUAL',
+      calendarRequired: json['calendarRequired'] ?? json['schedulingRequired'] ?? false,
+      subjectName: subject?['name']?.toString(),
+    );
+  }
+}
+
+class TeacherExam {
+  final int id;
+  final String title;
+  final String description;
+  final DateTime? startAt;
+  final DateTime? endAt;
+  final int maxScore;
+  final int taskLimit;
+  final String type; // PRACTICE, QUESTION
+  final String status; // PUBLISHED, COMPLETED, CANCELLED
+  final List<GroupSummaryModel> groups;
+  final int practiceCount;
+  final int questionCount;
+  final int? subjectId;
+  final String? subjectName;
+
+  TeacherExam({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.startAt,
+    required this.endAt,
+    required this.maxScore,
+    required this.taskLimit,
+    required this.type,
+    required this.status,
+    required this.groups,
+    required this.practiceCount,
+    required this.questionCount,
+    this.subjectId,
+    this.subjectName,
+  });
+
+  factory TeacherExam.fromJson(Map<String, dynamic> json) {
+    final subject = json['subject'] as Map<String, dynamic>?;
+    return TeacherExam(
+      id: json['id'] ?? 0,
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      startAt: DateTime.tryParse((json['startAt'] ?? '').toString()),
+      endAt: DateTime.tryParse((json['endAt'] ?? '').toString()),
+      maxScore: (json['maxScore'] as num?)?.toInt() ?? 0,
+      taskLimit: (json['taskLimit'] as num?)?.toInt() ?? 0,
+      type: json['type']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      groups: (json['groups'] as List? ?? [])
+          .map((g) => GroupSummaryModel.fromJson(g as Map<String, dynamic>))
+          .toList(),
+      practiceCount: (json['practices'] as List? ?? []).length,
+      questionCount: (json['questions'] as List? ?? []).length,
+      subjectId: (subject?['id'] as num?)?.toInt(),
+      subjectName: subject?['name']?.toString(),
+    );
+  }
+}
+
+class TeacherExamPractice {
+  final int id;
+  final int examId;
+  final int practiceId;
+  final String practiceName;
+  final String workMode;
+  final bool calendarRequired;
+
+  TeacherExamPractice({
+    required this.id,
+    required this.examId,
+    required this.practiceId,
+    required this.practiceName,
+    required this.workMode,
+    required this.calendarRequired,
+  });
+
+  factory TeacherExamPractice.fromJson(Map<String, dynamic> json) {
+    final p = (json['practice'] ?? {}) as Map<String, dynamic>;
+    return TeacherExamPractice(
+      id: json['id'] ?? 0,
+      examId: json['examId'] ?? 0,
+      practiceId: p['id'] ?? 0,
+      practiceName: p['name'] ?? '',
+      workMode: p['workMode']?.toString() ?? 'INDIVIDUAL',
+      calendarRequired: p['schedulingRequired'] ?? false,
+    );
+  }
+}
+
+class TeacherSubmission {
+  final int id;
+  final int participationId;
+  final int examId;
+  final int examPracticeId;
+  final String studentFirstName;
+  final String studentLastName;
+  final String studentEmail;
+  final String textAnswer;
+  final String fileUrl;
+  final DateTime? submittedAt;
+  final String status; // SUBMITTED, GRADED, RETURNED
+  final String teacherComment;
+
+  TeacherSubmission({
+    required this.id,
+    required this.participationId,
+    required this.examId,
+    required this.examPracticeId,
+    required this.studentFirstName,
+    required this.studentLastName,
+    required this.studentEmail,
+    required this.textAnswer,
+    required this.fileUrl,
+    required this.submittedAt,
+    required this.status,
+    required this.teacherComment,
+  });
+
+  String get studentFullName => '$studentFirstName $studentLastName'.trim();
+
+  factory TeacherSubmission.fromJson(Map<String, dynamic> json) {
+    final by = (json['submittedBy'] ?? {}) as Map<String, dynamic>;
+    return TeacherSubmission(
+      id: json['id'] ?? 0,
+      participationId: json['participationId'] ?? 0,
+      examId: json['examId'] ?? 0,
+      examPracticeId: json['examPracticeId'] ?? 0,
+      studentFirstName: by['firstName'] ?? '',
+      studentLastName: by['lastName'] ?? '',
+      studentEmail: by['email'] ?? '',
+      textAnswer: json['textAnswer'] ?? '',
+      fileUrl: json['fileUrl'] ?? '',
+      submittedAt: DateTime.tryParse((json['submittedAt'] ?? '').toString()),
+      status: json['status']?.toString() ?? '',
+      teacherComment: json['teacherComment'] ?? '',
+    );
+  }
+}
+
 class MyExamParticipation {
   final int participationId;
   final int examId;

@@ -1,4 +1,4 @@
-package com.rspcm.student.student
+package com.rspcm.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

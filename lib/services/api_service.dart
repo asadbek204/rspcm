@@ -491,4 +491,257 @@ class ApiService {
       print('API Error (Unregister FCM Token): $e');
     }
   }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Teacher — Profile
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Future<TeacherProfileModel?> getTeacherProfile() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.teacherProfileMe);
+      return TeacherProfileModel.fromJson(json.decode(response.body));
+    } catch (e) {
+      print('API Error (Teacher Profile): $e');
+      return null;
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Teacher — Own subjects
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Future<List<SubjectSummaryModel>> getTeacherOwnSubjects() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.teacherOwnSubjects);
+      final List data = json.decode(response.body);
+      return data
+          .map((s) => SubjectSummaryModel.fromJson(s as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('API Error (Teacher Own Subjects): $e');
+      return [];
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Teacher — Groups
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Future<List<TeacherGroup>> getTeacherGroups() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.teacherGroups);
+      final List data = json.decode(response.body);
+      return data.map((g) => TeacherGroup.fromJson(g as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Teacher Groups): $e');
+      return [];
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Teacher — Exams
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Future<List<TeacherExam>> getTeacherExams({int page = 0, int size = 20}) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiEndpoints.teacherExams}?own=true&page=$page&size=$size',
+      );
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final content = data['content'] as List? ?? [];
+      return content.map((e) => TeacherExam.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Teacher Exams): $e');
+      return [];
+    }
+  }
+
+  Future<TeacherExam?> getTeacherExamById(int examId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.teacherExams}/$examId');
+      return TeacherExam.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      print('API Error (Teacher Exam Detail): $e');
+      return null;
+    }
+  }
+
+  Future<TeacherExam?> createTeacherExam(Map<String, dynamic> body) async {
+    try {
+      final response = await _apiClient.post(ApiEndpoints.teacherExams, body);
+      return TeacherExam.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      print('API Error (Create Exam): $e');
+      return null;
+    }
+  }
+
+  Future<TeacherExam?> updateTeacherExam(int examId, Map<String, dynamic> body) async {
+    try {
+      final response = await _apiClient.put('${ApiEndpoints.teacherExams}/$examId', body);
+      return TeacherExam.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      print('API Error (Update Exam): $e');
+      return null;
+    }
+  }
+
+  Future<bool> deleteTeacherExam(int examId) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.teacherExams}/$examId');
+      return true;
+    } catch (e) {
+      print('API Error (Delete Exam): $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateTeacherExamStatus(int examId, String status) async {
+    try {
+      await _apiClient.patch('${ApiEndpoints.teacherExams}/$examId/status?status=$status');
+      return true;
+    } catch (e) {
+      print('API Error (Update Exam Status): $e');
+      return false;
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Teacher — Practices
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Future<List<TeacherPractice>> getTeacherPractices({int page = 0, int size = 30}) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiEndpoints.teacherPractices}?own=true&page=$page&size=$size',
+      );
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final content = data['content'] as List? ?? [];
+      return content.map((p) => TeacherPractice.fromJson(p as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Teacher Practices): $e');
+      return [];
+    }
+  }
+
+  Future<TeacherPractice?> createTeacherPractice(Map<String, dynamic> body) async {
+    try {
+      final response = await _apiClient.post(ApiEndpoints.teacherPractices, body);
+      return TeacherPractice.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      print('API Error (Create Practice): $e');
+      return null;
+    }
+  }
+
+  Future<TeacherPractice?> updateTeacherPractice(int id, Map<String, dynamic> body) async {
+    try {
+      final response = await _apiClient.put('${ApiEndpoints.teacherPractices}/$id', body);
+      return TeacherPractice.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      print('API Error (Update Practice): $e');
+      return null;
+    }
+  }
+
+  Future<bool> deleteTeacherPractice(int id) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.teacherPractices}/$id');
+      return true;
+    } catch (e) {
+      print('API Error (Delete Practice): $e');
+      return false;
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Teacher — Exam-Practices (варианты в экзамене)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Future<List<TeacherExamPractice>> getTeacherExamPractices(int examId) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiEndpoints.examPracticesTeacher}?examId=$examId&size=50',
+      );
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final content = data['content'] as List? ?? [];
+      return content
+          .map((e) => TeacherExamPractice.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('API Error (Exam Practices Teacher): $e');
+      return [];
+    }
+  }
+
+  Future<bool> addPracticeToExam(int examId, int practiceId, int orderIndex) async {
+    try {
+      await _apiClient.post(ApiEndpoints.examPracticesTeacher, {
+        'examId': examId,
+        'practiceId': practiceId,
+        'orderIndex': orderIndex,
+      });
+      return true;
+    } catch (e) {
+      print('API Error (Add Practice to Exam): $e');
+      return false;
+    }
+  }
+
+  Future<bool> removePracticeFromExam(int examPracticeId) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.examPracticesTeacher}/$examPracticeId');
+      return true;
+    } catch (e) {
+      print('API Error (Remove Practice from Exam): $e');
+      return false;
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Teacher — Submissions (сдача работ)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Future<List<TeacherSubmission>> getSubmissionsByExam(int examId,
+      {String? status, int page = 0, int size = 30}) async {
+    try {
+      var url = '${ApiEndpoints.teacherSubmissions}?examId=$examId&page=$page&size=$size';
+      if (status != null) url += '&status=$status';
+      final response = await _apiClient.get(url);
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final content = data['content'] as List? ?? [];
+      return content
+          .map((s) => TeacherSubmission.fromJson(s as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('API Error (Submissions by Exam): $e');
+      return [];
+    }
+  }
+
+  Future<bool> gradeSubmission(int submissionId, {String comment = ''}) async {
+    try {
+      await _apiClient.patch(
+        '${ApiEndpoints.teacherSubmissions}/$submissionId/grade',
+        body: {'teacherComment': comment},
+      );
+      return true;
+    } catch (e) {
+      print('API Error (Grade Submission): $e');
+      return false;
+    }
+  }
+
+  Future<bool> returnSubmission(int submissionId, {String comment = ''}) async {
+    try {
+      await _apiClient.patch(
+        '${ApiEndpoints.teacherSubmissions}/$submissionId/return',
+        body: {'teacherComment': comment},
+      );
+      return true;
+    } catch (e) {
+      print('API Error (Return Submission): $e');
+      return false;
+    }
+  }
 }

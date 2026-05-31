@@ -80,7 +80,7 @@ class _PracticesListScreenState extends State<PracticesListScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
-            Text('Практики появятся, когда преподаватель\nназначит их через экзамен',
+            Text('Перейдите во вкладку «Экзамены»,\nоткройте экзамен и выберите вариант практики',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
             const SizedBox(height: 24),

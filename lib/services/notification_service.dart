@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
@@ -9,7 +10,6 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._();
 
-  final _fcm = FirebaseMessaging.instance;
   final _localNotifications = FlutterLocalNotificationsPlugin();
   final _apiService = ApiService();
 
@@ -20,9 +20,21 @@ class NotificationService {
     importance: Importance.high,
   );
 
+  FirebaseMessaging? _getMessaging() {
+    try {
+      if (Firebase.apps.isEmpty) return null;
+      return FirebaseMessaging.instance;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> init() async {
+    final fcm = _getMessaging();
+    if (fcm == null) return; // Firebase not configured — skip silently
+
     // Request permission (iOS / Android 13+)
-    final settings = await _fcm.requestPermission(
+    final settings = await fcm.requestPermission(
       alert: true,
       badge: true,
       sound: true,
@@ -43,17 +55,17 @@ class NotificationService {
     await _localNotifications.initialize(initSettings);
 
     // Register token
-    await _registerToken();
+    await _registerToken(fcm);
 
     // Refresh token if it changes (e.g. reinstall)
-    _fcm.onTokenRefresh.listen(_sendTokenToServer);
+    fcm.onTokenRefresh.listen(_sendTokenToServer);
 
     // Handle foreground messages as local notifications
     FirebaseMessaging.onMessage.listen(_showLocalNotification);
   }
 
-  Future<void> _registerToken() async {
-    final token = await _fcm.getToken();
+  Future<void> _registerToken(FirebaseMessaging fcm) async {
+    final token = await fcm.getToken();
     if (token != null) {
       await _sendTokenToServer(token);
     }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1073685924601",
+    "project_id": "rspcm-bc392",
+    "storage_bucket": "rspcm-bc392.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1073685924601:android:3d9a3a9cd6893befd1f028",
+        "android_client_info": {
+          "package_name": "com.rspcm.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5JSr_lNwfyWkiDE4Y23FhTivdnBmmJaQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

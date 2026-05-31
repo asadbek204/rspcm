@@ -63,4 +63,25 @@ class ApiEndpoints {
 
   // FCM Push Notifications
   static const String fcmToken = '/fcm/token';
+
+  // Teacher — profile
+  static const String teacherProfileMe = '/profiles/teachers/me';
+
+  // Teacher — own subjects
+  static const String teacherOwnSubjects = '/subjects/own';
+
+  // Teacher — groups
+  static const String teacherGroups = '/teacher/groups';
+
+  // Teacher — exams  (GET /exams?own=true, POST /exams, PUT /exams/{id}, DELETE /exams/{id}, PATCH /exams/{id}/status)
+  static const String teacherExams = '/exams';
+
+  // Teacher — practices  (GET /practices?own=true, POST /practices, PUT /practices/{id}, DELETE /practices/{id})
+  static const String teacherPractices = '/practices';
+
+  // Teacher — exam-practices  (GET /exam-practices?examId=..., POST /exam-practices, DELETE /exam-practices/{id})
+  static const String examPracticesTeacher = '/exam-practices';
+
+  // Teacher — submissions  (GET /practice-submissions?examId=..., PATCH /{id}/grade, PATCH /{id}/return)
+  static const String teacherSubmissions = '/practice-submissions';
 }

@@ -14,6 +14,7 @@ import 'screens/profile/profile_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/exams/exams_list_screen.dart';
 import 'screens/practices/practices_list_screen.dart';
+import 'screens/teacher/teacher_main_screen.dart';
 import 'widgets/app_drawer.dart';
 
 void main() async {
@@ -48,10 +49,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<ThemeProvider, AuthProvider>(
-      builder: (context, themeProvider, authProvider, child) {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
         return MaterialApp(
-          title: 'RSPCM Студент',
+          title: 'RSPCM',
           debugShowCheckedModeBanner: false,
           locale: const Locale('ru', 'RU'),
           supportedLocales: const [Locale('ru', 'RU')],
@@ -61,10 +62,27 @@ class MyApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
           ],
           theme: themeProvider.themeData,
-          home: authProvider.isLoading
-              ? const _StartupLoadingScreen()
-              : (authProvider.isAuthenticated ? const MainScreen() : const LoginScreen()),
+          home: const _AuthGate(),
         );
+      },
+    );
+  }
+}
+
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        if (authProvider.isLoading) {
+          return const _StartupLoadingScreen();
+        }
+        if (!authProvider.isAuthenticated) return const LoginScreen();
+        return authProvider.isTeacher
+            ? const TeacherMainScreen()
+            : const MainScreen();
       },
     );
   }

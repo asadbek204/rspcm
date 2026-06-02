@@ -1,6 +1,6 @@
 class ApiEndpoints {
   // Real device (phone) must use your computer LAN IP, not localhost.
-  static const String baseUrl = 'http://10.37.80.102:8080/api';
+  static const String baseUrl = 'http://68.183.79.219/api';
 
   // Auth
   static const String login = '/auth/login';

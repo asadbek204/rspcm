@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,8 +33,9 @@ class _LoginScreenState extends State<LoginScreen> {
       TextInput.finishAutofillContext(shouldSave: true);
     } catch (e) {
       if (!mounted) return;
+      final l = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось войти: ${e.toString()}')),
+        SnackBar(content: Text('${l.loginError}${e.toString()}')),
       );
     }
   }
@@ -42,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       body: Container(
@@ -62,7 +65,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo Placeholder
                   Container(
                     width: 100,
                     height: 100,
@@ -75,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 30),
                   Text(
-                    'С возвращением',
+                    l.loginWelcomeBack,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: themeProvider.themeType == AppThemeType.darkGold || themeProvider.themeType == AppThemeType.darkEmerald
@@ -85,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Войдите, чтобы продолжить работу в RSPCM',
+                    l.loginSubtitle,
                     style: TextStyle(color: Colors.grey.shade500),
                   ),
                   const SizedBox(height: 50),
@@ -94,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         _buildTextField(
                           controller: _identifierController,
-                          hint: 'Email или ID университета',
+                          hint: l.loginEmailOrId,
                           icon: Icons.person_outline,
                           autofillHints: const [AutofillHints.username, AutofillHints.email],
                           textInputAction: TextInputAction.next,
@@ -104,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 20),
                         _buildTextField(
                           controller: _passwordController,
-                          hint: 'Пароль',
+                          hint: l.loginPassword,
                           icon: Icons.lock_outline,
                           obscure: _obscurePassword,
                           autofillHints: const [AutofillHints.password],
@@ -124,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {},
-                      child: Text('Забыли пароль?', style: TextStyle(color: theme.primaryColor)),
+                      child: Text(l.loginForgotPassword, style: TextStyle(color: theme.primaryColor)),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -143,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: auth.isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text('Войти', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              : Text(l.loginButton, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       );
                     },

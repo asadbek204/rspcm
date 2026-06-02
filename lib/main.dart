@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/language_provider.dart';
+import 'l10n/app_localizations.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/dashboard/notifications_screen.dart';
 import 'screens/calendar/calendar_screen.dart';
@@ -39,6 +41,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
       ],
       child: const MyApp(),
     ),
@@ -56,7 +59,7 @@ class MyApp extends StatelessWidget {
           title: 'RSPCM',
           debugShowCheckedModeBanner: false,
           locale: const Locale('ru', 'RU'),
-          supportedLocales: const [Locale('ru', 'RU')],
+          supportedLocales: const [Locale('ru', 'RU'), Locale('uz')],
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
@@ -115,13 +118,16 @@ class _MainScreenState extends State<MainScreen> {
   int _unreadCount = 0;
   final ApiService _api = ApiService();
 
-  final List<String> _titles = [
-    'Панель RSPCM',
-    'Практики',
-    'Календарь',
-    'Экзамены',
-    'Профиль',
-  ];
+  List<String> _titles(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return [
+      l.appTitle,
+      l.navPractices,
+      l.navCalendar,
+      l.navExams,
+      l.navProfile,
+    ];
+  }
 
   @override
   void initState() {
@@ -162,7 +168,7 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titles[_selectedIndex]),
+        title: Text(_titles(context)[_selectedIndex]),
         leading: Builder(
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu),
@@ -222,31 +228,31 @@ class _MainScreenState extends State<MainScreen> {
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
         unselectedLabelStyle: const TextStyle(fontSize: 11),
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Главная',
+            icon: const Icon(Icons.dashboard_outlined),
+            activeIcon: const Icon(Icons.dashboard),
+            label: AppLocalizations.of(context).navHome,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_outlined),
-            activeIcon: Icon(Icons.assignment),
-            label: 'Практики',
+            icon: const Icon(Icons.assignment_outlined),
+            activeIcon: const Icon(Icons.assignment),
+            label: AppLocalizations.of(context).navPractices,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today_outlined),
-            activeIcon: Icon(Icons.calendar_today),
-            label: 'Календарь',
+            icon: const Icon(Icons.calendar_today_outlined),
+            activeIcon: const Icon(Icons.calendar_today),
+            label: AppLocalizations.of(context).navCalendar,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.fact_check_outlined),
-            activeIcon: Icon(Icons.fact_check),
-            label: 'Экзамены',
+            icon: const Icon(Icons.fact_check_outlined),
+            activeIcon: const Icon(Icons.fact_check),
+            label: AppLocalizations.of(context).navExams,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Профиль',
+            icon: const Icon(Icons.person_outline),
+            activeIcon: const Icon(Icons.person),
+            label: AppLocalizations.of(context).navProfile,
           ),
         ],
       ),

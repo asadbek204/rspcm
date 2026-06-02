@@ -589,8 +589,8 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
                   );
                 }),
               const SizedBox(height: 12),
-              // Кнопки для лидера
-              if (isLeader) ...[
+              // Кнопки для лидера (только TEAM)
+              if (isLeader && p.practice.workMode == 'TEAM') ...[
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -1975,8 +1975,10 @@ class _AttemptStatus extends StatelessWidget {
               children: [
                 Icon(Icons.hourglass_top_outlined, size: 16, color: Colors.orange.shade700),
                 const SizedBox(width: 6),
-                Text('Ожидается проверка открытых вопросов',
-                    style: TextStyle(color: Colors.orange.shade700, fontSize: 13)),
+                Expanded(
+                  child: Text('Ожидается проверка открытых вопросов',
+                      style: TextStyle(color: Colors.orange.shade700, fontSize: 13)),
+                ),
               ],
             ),
           ),

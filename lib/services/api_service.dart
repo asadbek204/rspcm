@@ -320,6 +320,20 @@ class ApiService {
     }
   }
 
+  Future<List<PracticeSubmissionAttemptItem>> getSubmissionHistory(int submissionId) async {
+    try {
+      final response = await _apiClient
+          .get('${ApiEndpoints.practiceSubmissions}/$submissionId/history');
+      final data = json.decode(response.body) as List;
+      return data
+          .map((e) => PracticeSubmissionAttemptItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('API Error (Submission History): $e');
+      return [];
+    }
+  }
+
   Future<bool> startExamAttempt(int examId) async {
     try {
       await _apiClient.post('${ApiEndpoints.examAttemptStart}/$examId/attempt/start', {});
@@ -773,6 +787,52 @@ class ApiService {
       return true;
     } catch (e) {
       print('API Error (Return Submission): $e');
+      return false;
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Teacher — Exam Attempts (тип QUESTION)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Future<List<TeacherAttempt>> getAttemptsByExam(int examId) async {
+    try {
+      final response =
+          await _apiClient.get('${ApiEndpoints.teacherExams}/$examId/attempts');
+      final data = json.decode(response.body) as List;
+      return data
+          .map((e) => TeacherAttempt.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('API Error (Attempts by Exam): $e');
+      return [];
+    }
+  }
+
+  Future<List<TeacherAttemptAnswer>> getAttemptAnswers(
+      int examId, int attemptId) async {
+    try {
+      final response = await _apiClient
+          .get('${ApiEndpoints.teacherExams}/$examId/attempts/$attemptId/answers');
+      final data = json.decode(response.body) as List;
+      return data
+          .map((e) => TeacherAttemptAnswer.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('API Error (Attempt Answers): $e');
+      return [];
+    }
+  }
+
+  Future<bool> scoreAnswer(int answerId, int score) async {
+    try {
+      await _apiClient.patch(
+        '/answers/$answerId/score',
+        body: {'score': score, 'correct': score > 0},
+      );
+      return true;
+    } catch (e) {
+      print('API Error (Score Answer): $e');
       return false;
     }
   }

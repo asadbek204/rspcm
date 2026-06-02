@@ -692,7 +692,10 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
           }),
         if (p.submission != null) ...[
           const SizedBox(height: 12),
-          _SubmissionCard(submission: p.submission!),
+          _SubmissionCard(
+            submission: p.submission!,
+            onResubmit: p.submission!.status == 'RETURNED' ? _submit : null,
+          ),
         ],
         const SizedBox(height: 24),
       ],
@@ -1854,21 +1857,30 @@ class _ParticipationBadge extends StatelessWidget {
 
 class _SubmissionCard extends StatelessWidget {
   final PracticeSubmission submission;
-  const _SubmissionCard({required this.submission});
+  final VoidCallback? onResubmit;
+  const _SubmissionCard({required this.submission, this.onResubmit});
 
   (Color, String, IconData) get _info {
     switch (submission.status) {
       case 'GRADED':
         return (Colors.green.shade700, 'Проверено', Icons.check_circle);
       case 'RETURNED':
-        return (
-          Colors.orange.shade700,
-          'Возвращено на доработку',
-          Icons.replay_outlined
-        );
+        return (Colors.orange.shade700, 'Возвращено на доработку',
+            Icons.replay_outlined);
       default:
-        return (Colors.blue.shade700, 'На проверке', Icons.hourglass_top_outlined);
+        return (Colors.blue.shade700, 'На проверке',
+            Icons.hourglass_top_outlined);
     }
+  }
+
+  void _showHistory(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _SubmissionHistorySheet(submissionId: submission.id),
+    );
   }
 
   @override
@@ -1888,16 +1900,182 @@ class _SubmissionCard extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: color),
               const SizedBox(width: 8),
-              Text(label,
-                  style: TextStyle(
-                      color: color, fontWeight: FontWeight.w600)),
+              Expanded(
+                child: Text(label,
+                    style: TextStyle(
+                        color: color, fontWeight: FontWeight.w600)),
+              ),
+              if (submission.attemptCount > 0)
+                GestureDetector(
+                  onTap: () => _showHistory(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.history, size: 13, color: color),
+                        const SizedBox(width: 4),
+                        Text('${submission.attemptCount} попыт.',
+                            style: TextStyle(
+                                color: color,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
           if (submission.teacherComment.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text('Комментарий преподавателя: ${submission.teacherComment}',
+            Text('Комментарий: ${submission.teacherComment}',
                 style: TextStyle(color: Colors.grey[700])),
           ],
+          if (onResubmit != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onResubmit,
+                icon: const Icon(Icons.send_outlined, size: 16),
+                label: const Text('Переотправить на проверку'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SubmissionHistorySheet extends StatefulWidget {
+  final int submissionId;
+  const _SubmissionHistorySheet({required this.submissionId});
+
+  @override
+  State<_SubmissionHistorySheet> createState() =>
+      _SubmissionHistorySheetState();
+}
+
+class _SubmissionHistorySheetState extends State<_SubmissionHistorySheet> {
+  final ApiService _api = ApiService();
+  bool _loading = true;
+  List<PracticeSubmissionAttemptItem> _history = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final history = await _api.getSubmissionHistory(widget.submissionId);
+    if (!mounted) return;
+    setState(() {
+      _history = history;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = DateFormat('dd MMM yyyy, HH:mm', 'ru_RU');
+    return DraggableScrollableSheet(
+      initialChildSize: 0.5,
+      maxChildSize: 0.9,
+      minChildSize: 0.3,
+      expand: false,
+      builder: (_, controller) => Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text('История сдач',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _history.isEmpty
+                    ? const Center(child: Text('История пуста'))
+                    : ListView.separated(
+                        controller: controller,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        itemCount: _history.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 10),
+                        itemBuilder: (_, i) {
+                          final a = _history[i];
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: Colors.grey.withValues(alpha: 0.15)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .primaryColor
+                                            .withValues(alpha: 0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(99),
+                                      ),
+                                      child: Text(
+                                          'Попытка ${a.attemptNumber}',
+                                          style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .primaryColor,
+                                              fontSize: 12,
+                                              fontWeight:
+                                                  FontWeight.w600)),
+                                    ),
+                                    const Spacer(),
+                                    Text(fmt.format(a.submittedAt),
+                                        style: TextStyle(
+                                            color: Colors.grey[500],
+                                            fontSize: 12)),
+                                  ],
+                                ),
+                                if (a.textAnswer.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(a.textAnswer,
+                                      style: const TextStyle(
+                                          fontSize: 13, height: 1.4)),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+          ),
         ],
       ),
     );

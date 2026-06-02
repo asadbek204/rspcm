@@ -525,6 +525,7 @@ class PracticeSubmission {
   final String fileUrl;
   final String status;
   final String teacherComment;
+  final int attemptCount;
 
   PracticeSubmission({
     required this.id,
@@ -533,6 +534,7 @@ class PracticeSubmission {
     required this.fileUrl,
     required this.status,
     required this.teacherComment,
+    this.attemptCount = 0,
   });
 
   factory PracticeSubmission.fromJson(Map<String, dynamic> json) {
@@ -543,6 +545,34 @@ class PracticeSubmission {
       fileUrl: json['fileUrl'] ?? '',
       status: json['status'] ?? '',
       teacherComment: json['teacherComment'] ?? '',
+      attemptCount: json['attemptCount'] ?? 0,
+    );
+  }
+}
+
+class PracticeSubmissionAttemptItem {
+  final int id;
+  final int attemptNumber;
+  final String textAnswer;
+  final String fileUrl;
+  final DateTime submittedAt;
+
+  PracticeSubmissionAttemptItem({
+    required this.id,
+    required this.attemptNumber,
+    required this.textAnswer,
+    required this.fileUrl,
+    required this.submittedAt,
+  });
+
+  factory PracticeSubmissionAttemptItem.fromJson(Map<String, dynamic> json) {
+    return PracticeSubmissionAttemptItem(
+      id: json['id'] ?? 0,
+      attemptNumber: json['attemptNumber'] ?? 0,
+      textAnswer: json['textAnswer'] ?? '',
+      fileUrl: json['fileUrl'] ?? '',
+      submittedAt: DateTime.tryParse(json['submittedAt']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 }
@@ -974,6 +1004,111 @@ class MyExamParticipation {
       submission: json['submission'] == null
           ? null
           : PracticeSubmission.fromJson(json['submission'] as Map<String, dynamic>),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Teacher Exam Attempt Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+class TeacherAttempt {
+  final int attemptId;
+  final StudentSummary student;
+  final String status; // SUBMITTED, GRADED
+  final DateTime? submittedAt;
+  final int? totalScore;
+  final int openUngradedCount;
+
+  TeacherAttempt({
+    required this.attemptId,
+    required this.student,
+    required this.status,
+    required this.submittedAt,
+    required this.totalScore,
+    required this.openUngradedCount,
+  });
+
+  factory TeacherAttempt.fromJson(Map<String, dynamic> json) {
+    return TeacherAttempt(
+      attemptId: json['attemptId'] ?? 0,
+      student: StudentSummary.fromJson(json['student'] as Map<String, dynamic>),
+      status: json['status'] ?? '',
+      submittedAt: json['submittedAt'] == null
+          ? null
+          : DateTime.tryParse(json['submittedAt'].toString()),
+      totalScore: (json['totalScore'] as num?)?.toInt(),
+      openUngradedCount: json['openUngradedCount'] ?? 0,
+    );
+  }
+}
+
+class TeacherAnswerOption {
+  final int id;
+  final String text;
+  final bool correct;
+  final int orderIndex;
+
+  TeacherAnswerOption(
+      {required this.id,
+      required this.text,
+      required this.correct,
+      required this.orderIndex});
+
+  factory TeacherAnswerOption.fromJson(Map<String, dynamic> json) {
+    return TeacherAnswerOption(
+      id: json['id'] ?? 0,
+      text: json['text'] ?? '',
+      correct: json['correct'] ?? false,
+      orderIndex: json['orderIndex'] ?? 0,
+    );
+  }
+}
+
+class TeacherAttemptAnswer {
+  final int? answerId;
+  final int examQuestionId;
+  final int orderIndex;
+  final String questionText;
+  final String questionType; // OPEN, CLOSED, MULTIPLE_CHOICE
+  final int maxScore;
+  final String? textAnswer;
+  final List<int> selectedOptionIds;
+  final List<TeacherAnswerOption> options;
+  final int? score;
+  final bool? correct;
+
+  TeacherAttemptAnswer({
+    required this.answerId,
+    required this.examQuestionId,
+    required this.orderIndex,
+    required this.questionText,
+    required this.questionType,
+    required this.maxScore,
+    required this.textAnswer,
+    required this.selectedOptionIds,
+    required this.options,
+    required this.score,
+    required this.correct,
+  });
+
+  factory TeacherAttemptAnswer.fromJson(Map<String, dynamic> json) {
+    return TeacherAttemptAnswer(
+      answerId: (json['answerId'] as num?)?.toInt(),
+      examQuestionId: json['examQuestionId'] ?? 0,
+      orderIndex: json['orderIndex'] ?? 0,
+      questionText: json['questionText'] ?? '',
+      questionType: json['questionType'] ?? 'OPEN',
+      maxScore: json['maxScore'] ?? 0,
+      textAnswer: json['textAnswer'] as String?,
+      selectedOptionIds: (json['selectedOptionIds'] as List? ?? [])
+          .map((e) => (e as num).toInt())
+          .toList(),
+      options: (json['options'] as List? ?? [])
+          .map((e) => TeacherAnswerOption.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      score: (json['score'] as num?)?.toInt(),
+      correct: json['correct'] as bool?,
     );
   }
 }

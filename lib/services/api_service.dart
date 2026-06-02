@@ -512,6 +512,36 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getChatMembers(String chatId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.chats}/$chatId/members');
+      return List<Map<String, dynamic>>.from(json.decode(response.body));
+    } catch (e) {
+      print('API Error (Get Chat Members): $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAvailableChatMembers(String chatId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.chats}/$chatId/available-members');
+      return List<Map<String, dynamic>>.from(json.decode(response.body));
+    } catch (e) {
+      print('API Error (Get Available Members): $e');
+      return [];
+    }
+  }
+
+  Future<bool> addChatMember(String chatId, int userId) async {
+    try {
+      await _apiClient.post('${ApiEndpoints.chats}/$chatId/members', {'userId': userId});
+      return true;
+    } catch (e) {
+      print('API Error (Add Chat Member): $e');
+      return false;
+    }
+  }
+
   Future<bool> sendMessage(String chatId, String message) async {
     try {
       await _apiClient.post('${ApiEndpoints.chats}/$chatId/messages', {'message': message});

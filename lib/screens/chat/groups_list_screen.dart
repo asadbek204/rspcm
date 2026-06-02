@@ -328,6 +328,7 @@ class _ChatTile extends StatelessWidget {
                 chatId: chat['id'].toString(),
                 title: title,
                 isGroup: true,
+                chatType: (chat['type'] ?? '').toString(),
                 memberCount: memberCount,
                 onlineCount: onlineCount,
               ),

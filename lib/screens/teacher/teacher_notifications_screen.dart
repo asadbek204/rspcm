@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import 'teacher_all_submissions_screen.dart';
 
-class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+class TeacherNotificationsScreen extends StatefulWidget {
+  const TeacherNotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
+  State<TeacherNotificationsScreen> createState() =>
+      _TeacherNotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _TeacherNotificationsScreenState
+    extends State<TeacherNotificationsScreen> {
   final ApiService _api = ApiService();
   bool _loading = true;
   List<NotificationItem> _items = [];
@@ -64,7 +67,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             if (!_loading && unreadCount > 0) ...[
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primary,
                   borderRadius: BorderRadius.circular(12),
@@ -80,6 +84,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ],
           ],
         ),
+        centerTitle: false,
         actions: [
           if (!_loading && unreadCount > 0)
             TextButton(
@@ -91,7 +96,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
-              ? _buildEmpty(theme)
+              ? _buildEmpty()
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.separated(
@@ -99,19 +104,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     itemCount: _items.length,
                     separatorBuilder: (_, _i) =>
                         const Divider(height: 1, indent: 72),
-                    itemBuilder: (context, index) =>
-                        _buildItem(context, _items[index], theme),
+                    itemBuilder: (ctx, i) =>
+                        _buildItem(ctx, _items[i], theme),
                   ),
                 ),
     );
   }
 
-  Widget _buildItem(BuildContext context, NotificationItem item, ThemeData theme) {
+  Widget _buildItem(
+      BuildContext context, NotificationItem item, ThemeData theme) {
     final iconData = _iconForType(item.type);
     final iconColor = _colorForType(item.type);
+    final isSubmissionReceived = item.type == 'SUBMISSION_RECEIVED';
 
     return InkWell(
-      onTap: () => _markOneRead(item),
+      onTap: () async {
+        await _markOneRead(item);
+        if (!mounted) return;
+        if (isSubmissionReceived) {
+          // ignore: use_build_context_synchronously
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
+                appBar: AppBar(title: const Text('Сдачи работ')),
+                body: const TeacherAllSubmissionsScreen(),
+              ),
+            ),
+          ).then((_) => _load());
+        }
+      },
       child: Container(
         color: item.read
             ? Colors.transparent
@@ -162,21 +184,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               const SizedBox(height: 6),
               Text(
                 _formatDate(item.createdAt),
-                style:
-                    TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
               ),
             ],
           ),
-          trailing: item.read
-              ? null
-              : Icon(Icons.circle, size: 8, color: theme.colorScheme.primary),
+          trailing: isSubmissionReceived
+              ? Icon(Icons.chevron_right, color: Colors.grey.shade400)
+              : item.read
+                  ? null
+                  : Icon(Icons.circle,
+                      size: 8, color: theme.colorScheme.primary),
           isThreeLine: true,
         ),
       ),
     );
   }
 
-  Widget _buildEmpty(ThemeData theme) {
+  Widget _buildEmpty() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -193,7 +217,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Здесь будут приглашения, оценки\nи напоминания о дедлайнах',
+            'Сданные работы и напоминания\nпоявятся здесь',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
           ),
@@ -204,18 +228,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   IconData _iconForType(String type) {
     switch (type) {
-      case 'TEAM_INVITATION':
-        return Icons.group_add_outlined;
       case 'SUBMISSION_RECEIVED':
         return Icons.upload_file_outlined;
       case 'SUBMISSION_GRADED':
-        return Icons.grade_outlined;
+        return Icons.check_circle_outline;
       case 'SUBMISSION_RETURNED':
         return Icons.undo_outlined;
-      case 'PRACTICE_REMINDER':
-        return Icons.book_outlined;
       case 'DEADLINE_REMINDER':
         return Icons.timer_outlined;
+      case 'PRACTICE_REMINDER':
+        return Icons.book_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -223,18 +245,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Color _colorForType(String type) {
     switch (type) {
-      case 'TEAM_INVITATION':
-        return Colors.deepPurple;
       case 'SUBMISSION_RECEIVED':
-        return Colors.blue;
+        return Colors.blue.shade600;
       case 'SUBMISSION_GRADED':
-        return Colors.green;
+        return Colors.green.shade600;
       case 'SUBMISSION_RETURNED':
-        return Colors.orange;
+        return Colors.orange.shade700;
+      case 'DEADLINE_REMINDER':
+        return Colors.red.shade600;
       case 'PRACTICE_REMINDER':
         return Colors.teal;
-      case 'DEADLINE_REMINDER':
-        return Colors.red;
       default:
         return Colors.grey;
     }

@@ -1,6 +1,6 @@
 class ApiEndpoints {
   // Real device (phone) must use your computer LAN IP, not localhost.
-  static const String baseUrl = 'http://10.230.207.102:8080/api';
+  static const String baseUrl = 'http://10.37.80.102:8080/api';
 
   // Auth
   static const String login = '/auth/login';
@@ -60,6 +60,16 @@ class ApiEndpoints {
   // Chat
   static const String myChats = '/chats/me';
   static const String chats = '/chats'; // /{chatId}/messages
+  static const String directChat = '/chats/direct';
+
+  // Student groups
+  static const String studentGroups = '/student/groups'; // GET /api/student/groups, GET /api/student/groups/{id}/members
+
+  // Notifications
+  static const String notifications = '/notifications';
+  static const String notificationsUnreadCount = '/notifications/unread-count';
+  static const String notificationsReadAll = '/notifications/read-all';
+  // Mark one: PATCH /notifications/{id}/read
 
   // FCM Push Notifications
   static const String fcmToken = '/fcm/token';
@@ -84,4 +94,7 @@ class ApiEndpoints {
 
   // Teacher — submissions  (GET /practice-submissions?examId=..., PATCH /{id}/grade, PATCH /{id}/return)
   static const String teacherSubmissions = '/practice-submissions';
+
+  // Teacher — question bank  (GET /questions?own=true, POST /questions, PUT /questions/{id}, DELETE /questions/{id})
+  static const String teacherQuestions = '/questions';
 }

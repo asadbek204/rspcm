@@ -15,6 +15,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/exams/exams_list_screen.dart';
 import 'screens/practices/practices_list_screen.dart';
 import 'screens/teacher/teacher_main_screen.dart';
+import 'services/api_service.dart';
 import 'widgets/app_drawer.dart';
 
 void main() async {
@@ -111,6 +112,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  int _unreadCount = 0;
+  final ApiService _api = ApiService();
 
   final List<String> _titles = [
     'Панель RSPCM',
@@ -119,6 +122,26 @@ class _MainScreenState extends State<MainScreen> {
     'Экзамены',
     'Профиль',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await _api.getUnreadNotificationCount();
+      if (mounted) setState(() => _unreadCount = count);
+    } catch (_) {}
+  }
+
+  void _openNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    ).then((_) => _loadUnreadCount());
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -147,14 +170,48 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
         actions: [
-          if (_selectedIndex == 0)
-            IconButton(
-              icon: const Icon(Icons.notifications_none),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-              ),
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_none_outlined),
+                  onPressed: _openNotifications,
+                ),
+                if (_unreadCount > 0)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IgnorePointer(
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade600,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.scaffoldBackgroundColor,
+                            width: 1.5,
+                          ),
+                        ),
+                        constraints:
+                            const BoxConstraints(minWidth: 17, minHeight: 17),
+                        child: Text(
+                          _unreadCount > 99 ? '99+' : '$_unreadCount',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
       drawer: AppDrawer(onTabSelected: _onItemTapped),

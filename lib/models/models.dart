@@ -437,6 +437,64 @@ class SubjectItem {
   }
 }
 
+class StudentGroupMember {
+  final int id;
+  final String firstName;
+  final String lastName;
+  final String email;
+
+  StudentGroupMember({
+    required this.id,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+  });
+
+  String get fullName => '$firstName $lastName'.trim();
+
+  factory StudentGroupMember.fromJson(Map<String, dynamic> json) {
+    return StudentGroupMember(
+      id: json['id'] ?? 0,
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      email: json['email'] ?? '',
+    );
+  }
+}
+
+class StudentGroupModel {
+  final int id;
+  final String name;
+  final String description;
+  final String language;
+  final List<SubjectItem> subjects;
+  final List<StudentGroupMember> teachers;
+
+  StudentGroupModel({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.language,
+    required this.subjects,
+    required this.teachers,
+  });
+
+  factory StudentGroupModel.fromJson(Map<String, dynamic> json) {
+    return StudentGroupModel(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      language: json['language']?.toString() ?? '',
+      subjects: (json['subjects'] as List? ?? [])
+          .map((s) => SubjectItem.fromJson(s as Map<String, dynamic>))
+          .toList(),
+      teachers: (json['teachers'] as List? ?? [])
+          .map((t) => StudentGroupMember.fromJson(t as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
 class ExamPracticeOption {
   final int id;
   final int examId;
@@ -753,6 +811,104 @@ class TeacherSubmission {
       submittedAt: DateTime.tryParse((json['submittedAt'] ?? '').toString()),
       status: json['status']?.toString() ?? '',
       teacherComment: json['teacherComment'] ?? '',
+    );
+  }
+}
+
+class TeacherQuestionOption {
+  final int id;
+  final String text;
+  final bool correct;
+
+  TeacherQuestionOption({
+    required this.id,
+    required this.text,
+    required this.correct,
+  });
+
+  factory TeacherQuestionOption.fromJson(Map<String, dynamic> json) {
+    return TeacherQuestionOption(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      text: json['text']?.toString() ?? '',
+      correct: json['correct'] == true,
+    );
+  }
+}
+
+class TeacherQuestion {
+  final int id;
+  final String text;
+  final String type; // OPEN, CLOSED, MULTIPLE_CHOICE
+  final String? subjectName;
+  final int? subjectId;
+  final List<TeacherQuestionOption> options;
+
+  TeacherQuestion({
+    required this.id,
+    required this.text,
+    required this.type,
+    this.subjectName,
+    this.subjectId,
+    required this.options,
+  });
+
+  factory TeacherQuestion.fromJson(Map<String, dynamic> json) {
+    final subject = json['subject'] as Map<String, dynamic>?;
+    return TeacherQuestion(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      text: json['text']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'OPEN',
+      subjectName: subject?['name']?.toString(),
+      subjectId: (subject?['id'] as num?)?.toInt(),
+      options: (json['options'] as List? ?? [])
+          .map((o) => TeacherQuestionOption.fromJson(o as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class NotificationItem {
+  final int id;
+  final String title;
+  final String body;
+  final String type;
+  final int? referenceId;
+  final bool read;
+  final DateTime createdAt;
+
+  NotificationItem({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.type,
+    this.referenceId,
+    required this.read,
+    required this.createdAt,
+  });
+
+  factory NotificationItem.fromJson(Map<String, dynamic> json) {
+    return NotificationItem(
+      id: json['id'] ?? 0,
+      title: json['title'] ?? '',
+      body: json['body'] ?? '',
+      type: json['type'] ?? '',
+      referenceId: json['referenceId'] as int?,
+      read: json['read'] ?? false,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  NotificationItem copyWith({bool? read}) {
+    return NotificationItem(
+      id: id,
+      title: title,
+      body: body,
+      type: type,
+      referenceId: referenceId,
+      read: read ?? this.read,
+      createdAt: createdAt,
     );
   }
 }

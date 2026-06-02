@@ -200,7 +200,7 @@ class ApiService {
     }
   }
 
-  Future<List<SubjectItem>> getSubjects({int page = 0, int size = 20}) async {
+  Future<List<SubjectItem>> getSubjects({int page = 0, int size = 50}) async {
     try {
       final response = await _apiClient.get('${ApiEndpoints.subjects}?page=$page&size=$size');
       final data = json.decode(response.body) as Map<String, dynamic>;
@@ -453,6 +453,38 @@ class ApiService {
     } catch (e) {
       print('API Error (Get Chats): $e');
       return [];
+    }
+  }
+
+  Future<List<StudentGroupModel>> getStudentGroups() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.studentGroups);
+      final data = json.decode(response.body) as List? ?? [];
+      return data.map((g) => StudentGroupModel.fromJson(g as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Student Groups): $e');
+      return [];
+    }
+  }
+
+  Future<List<StudentGroupMember>> getGroupMembers(int groupId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.studentGroups}/$groupId/members');
+      final data = json.decode(response.body) as List? ?? [];
+      return data.map((m) => StudentGroupMember.fromJson(m as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Group Members): $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> createOrGetDirectChat(int targetUserId) async {
+    try {
+      final response = await _apiClient.post(ApiEndpoints.directChat, {'userId': targetUserId});
+      return json.decode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      print('API Error (Direct Chat): $e');
+      return null;
     }
   }
 
@@ -741,6 +773,101 @@ class ApiService {
       return true;
     } catch (e) {
       print('API Error (Return Submission): $e');
+      return false;
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Teacher — Question Bank
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Future<List<TeacherQuestion>> getTeacherQuestions({int page = 0, int size = 30}) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiEndpoints.teacherQuestions}?own=true&page=$page&size=$size',
+      );
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final content = data['content'] as List? ?? [];
+      return content.map((q) => TeacherQuestion.fromJson(q as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Teacher Questions): $e');
+      return [];
+    }
+  }
+
+  Future<TeacherQuestion?> createTeacherQuestion(Map<String, dynamic> body) async {
+    try {
+      final response = await _apiClient.post(ApiEndpoints.teacherQuestions, body);
+      return TeacherQuestion.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      print('API Error (Create Question): $e');
+      return null;
+    }
+  }
+
+  Future<TeacherQuestion?> updateTeacherQuestion(int id, Map<String, dynamic> body) async {
+    try {
+      final response = await _apiClient.put('${ApiEndpoints.teacherQuestions}/$id', body);
+      return TeacherQuestion.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      print('API Error (Update Question): $e');
+      return null;
+    }
+  }
+
+  Future<bool> deleteTeacherQuestion(int id) async {
+    try {
+      await _apiClient.delete('${ApiEndpoints.teacherQuestions}/$id');
+      return true;
+    } catch (e) {
+      print('API Error (Delete Question): $e');
+      return false;
+    }
+  }
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+
+  Future<List<NotificationItem>> getMyNotifications({int page = 0, int size = 50}) async {
+    try {
+      final response = await _apiClient.get(
+          '${ApiEndpoints.notifications}?page=$page&size=$size');
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final content = data['content'] as List? ?? [];
+      return content.map((e) => NotificationItem.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (Get Notifications): $e');
+      return [];
+    }
+  }
+
+  Future<int> getUnreadNotificationCount() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.notificationsUnreadCount);
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      return (data['count'] as num?)?.toInt() ?? 0;
+    } catch (e) {
+      print('API Error (Unread Count): $e');
+      return 0;
+    }
+  }
+
+  Future<NotificationItem?> markNotificationRead(int notificationId) async {
+    try {
+      final response = await _apiClient.patch(
+          '${ApiEndpoints.notifications}/$notificationId/read');
+      return NotificationItem.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      print('API Error (Mark Notification Read): $e');
+      return null;
+    }
+  }
+
+  Future<bool> markAllNotificationsRead() async {
+    try {
+      await _apiClient.patch(ApiEndpoints.notificationsReadAll);
+      return true;
+    } catch (e) {
+      print('API Error (Mark All Read): $e');
       return false;
     }
   }

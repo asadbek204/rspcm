@@ -17,7 +17,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
   bool _loading = true;
 
   List<TeacherExam> _exams = [];
-  List<TeacherPractice> _practices = [];
   List<TeacherGroup> _groups = [];
   int _pendingSubmissions = 0;
 
@@ -31,13 +30,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
     setState(() => _loading = true);
     final results = await Future.wait([
       _api.getTeacherExams(),
-      _api.getTeacherPractices(),
       _api.getTeacherGroups(),
     ]);
 
     final exams = results[0] as List<TeacherExam>;
-    final practices = results[1] as List<TeacherPractice>;
-    final groups = results[2] as List<TeacherGroup>;
+    final groups = results[1] as List<TeacherGroup>;
 
     // Count pending (SUBMITTED) submissions across all published exams
     int pending = 0;
@@ -49,7 +46,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
     if (!mounted) return;
     setState(() {
       _exams = exams;
-      _practices = practices;
       _groups = groups;
       _pendingSubmissions = pending;
       _loading = false;
@@ -149,9 +145,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                     ),
                     const SizedBox(width: 10),
                     _StatCard(
-                      icon: Icons.assignment_outlined,
-                      label: 'Практики',
-                      value: _practices.length.toString(),
+                      icon: Icons.inbox_outlined,
+                      label: 'Сдачи',
+                      value: _pendingSubmissions.toString(),
                       color: Colors.teal,
                       onTap: () => widget.onTabSelected(1),
                     ),
@@ -169,7 +165,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                 // ── Pending submissions banner ────────────────────────────────
                 if (_pendingSubmissions > 0)
                   GestureDetector(
-                    onTap: () => widget.onTabSelected(2),
+                    onTap: () => widget.onTabSelected(1),
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(16),
@@ -203,7 +199,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                                   ),
                                 ),
                                 Text(
-                                  'Перейдите в экзамены для проверки',
+                                  'Нажмите для проверки',
                                   style: TextStyle(
                                       color: Colors.grey[600], fontSize: 12),
                                 ),
@@ -222,7 +218,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                 _DashSectionHeader(
                   title: 'Активные экзамены',
                   icon: Icons.fact_check_outlined,
-                  onMore: () => widget.onTabSelected(2),
+                  onMore: () => widget.onTabSelected(2), // Экзамены
                 ),
                 const SizedBox(height: 10),
                 ..._exams

@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../models/models.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -274,10 +276,12 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
 
   StudentExam get exam => widget.exam;
   bool get _isGraded => _participation?.submission?.status == 'GRADED';
-  bool get _canEdit =>
-      _participation != null &&
-      !_isGraded &&
-      _participation!.status != 'PRACTICE_CHOSEN';
+
+  bool _isLeader(BuildContext context) {
+    final myId = Provider.of<AuthProvider>(context, listen: false).profile?.userId;
+    if (myId == null || _participation == null) return false;
+    return _participation!.members.any((m) => m.user.id == myId && m.isLeader);
+  }
 
   @override
   void initState() {
@@ -532,65 +536,110 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
         // ── Team ─────────────────────────────────────────────────────────────
         const _SectionHeader(title: 'Команда', icon: Icons.group_outlined),
         const SizedBox(height: 10),
-        if (p.members.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Text('Участники ещё не добавлены.',
-                style: TextStyle(color: Colors.grey[600])),
-          )
-        else
-          ...p.members.map(
-            (m) => Card(
-              margin: const EdgeInsets.only(bottom: 6),
-              child: ListTile(
-                dense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                leading: CircleAvatar(
-                  child:
-                      Text(m.firstName.isNotEmpty ? m.firstName[0] : '?'),
-                ),
-                title: Text('${m.firstName} ${m.lastName}'),
-                subtitle: Text(m.email,
-                    style: const TextStyle(fontSize: 12)),
-                trailing: _canEdit
-                    ? IconButton(
-                        icon: const Icon(
-                            Icons.person_remove_alt_1_outlined,
-                            size: 20),
-                        onPressed: () => _removeMember(m),
-                        tooltip: 'Удалить из команды',
-                      )
-                    : null,
-              ),
-            ),
-          ),
-        if (_canEdit) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+        Builder(builder: (ctx) {
+          final isLeader = _isLeader(ctx);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OutlinedButton.icon(
-                onPressed: _inviteMembers,
-                icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
-                label: const Text('Пригласить'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _leaveTeam,
-                icon: const Icon(Icons.exit_to_app_outlined, size: 18),
-                label: const Text('Покинуть'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _cancelParticipation,
-                icon: const Icon(Icons.close, size: 18),
-                label: const Text('Отменить участие'),
-                style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red.shade700),
+              if (p.members.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text('Участники ещё не добавлены.',
+                      style: TextStyle(color: Colors.grey[600])),
+                )
+              else
+                ...p.members.map((m) {
+                  final name = '${m.user.firstName} ${m.user.lastName}'.trim();
+                  final initial = m.user.firstName.isNotEmpty ? m.user.firstName[0] : '?';
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                      leading: CircleAvatar(child: Text(initial)),
+                      title: Row(
+                        children: [
+                          Text(name),
+                          const SizedBox(width: 8),
+                          if (m.isLeader)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(99),
+                                border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.4)),
+                              ),
+                              child: Text('Лидер',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.amber.shade800)),
+                            ),
+                        ],
+                      ),
+                      subtitle: Text(m.user.email, style: const TextStyle(fontSize: 12)),
+                      trailing: isLeader && !m.isLeader
+                          ? IconButton(
+                              icon: const Icon(Icons.person_remove_alt_1_outlined, size: 20),
+                              onPressed: () => _removeMember(m.user),
+                              tooltip: 'Удалить из команды',
+                            )
+                          : null,
+                    ),
+                  );
+                }),
+              const SizedBox(height: 12),
+              // Кнопки для лидера
+              if (isLeader) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _inviteMembers,
+                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+                    label: const Text('Пригласить участника'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              // Кнопки для всех участников
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _leaveTeam,
+                      icon: const Icon(Icons.exit_to_app_outlined, size: 18),
+                      label: const Text('Покинуть'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orange.shade700,
+                        side: BorderSide(color: Colors.orange.shade300),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _cancelParticipation,
+                      icon: const Icon(Icons.cancel_outlined, size: 18),
+                      label: const Text('Отменить'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red.shade700,
+                        side: BorderSide(color: Colors.red.shade300),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-        ],
+          );
+        }),
         const SizedBox(height: 24),
 
         // ── Submission ───────────────────────────────────────────────────────
@@ -603,25 +652,44 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
             color: Colors.green,
             text: 'Работа проверена. Редактирование недоступно.',
           )
-        else ...[
-          TextField(
-            controller: _submissionCtrl,
-            maxLines: 5,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              hintText: 'Опишите выполненную работу...',
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _submit,
-              icon: const Icon(Icons.send_outlined),
-              label: const Text('Отправить на проверку'),
-            ),
-          ),
-        ],
+        else
+          Builder(builder: (ctx) {
+            final isLeader = _isLeader(ctx);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!isLeader)
+                  const _InfoBanner(
+                    icon: Icons.info_outline,
+                    color: Colors.blue,
+                    text: 'Только лидер команды может отправить работу на проверку.',
+                  )
+                else ...[
+                  TextField(
+                    controller: _submissionCtrl,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      hintText: 'Опишите выполненную работу...',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _submit,
+                      icon: const Icon(Icons.send_outlined),
+                      label: const Text('Отправить на проверку'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          }),
         if (p.submission != null) ...[
           const SizedBox(height: 12),
           _SubmissionCard(submission: p.submission!),
@@ -1874,7 +1942,7 @@ class _AttemptStatus extends StatelessWidget {
       case 'STARTED':
         return (Colors.blue.shade700, 'Начат');
       case 'SUBMITTED':
-        return (Colors.orange.shade700, 'Отправлен');
+        return (Colors.orange.shade700, 'На проверке');
       case 'GRADED':
         return (Colors.green.shade700, 'Проверен');
       default:
@@ -1885,13 +1953,58 @@ class _AttemptStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label) = _info;
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Статус попытки: ',
-            style: TextStyle(color: Colors.grey[600])),
-        Text(label,
-            style:
-                TextStyle(color: color, fontWeight: FontWeight.w600)),
+        Row(
+          children: [
+            Text('Статус: ', style: TextStyle(color: Colors.grey[600])),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        if (attempt.status == 'SUBMITTED') ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.hourglass_top_outlined, size: 16, color: Colors.orange.shade700),
+                const SizedBox(width: 6),
+                Text('Ожидается проверка открытых вопросов',
+                    style: TextStyle(color: Colors.orange.shade700, fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+        if (attempt.status == 'GRADED' && attempt.totalScore != null) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle_outline, size: 18, color: Colors.green.shade700),
+                const SizedBox(width: 8),
+                Text('Итоговый балл: ',
+                    style: TextStyle(color: Colors.green.shade700, fontSize: 14)),
+                Text('${attempt.totalScore}',
+                    style: TextStyle(
+                        color: Colors.green.shade700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

@@ -366,6 +366,7 @@ class StudentExamAttemptInfo {
   final DateTime? submittedAt;
   final DateTime? attemptDeadlineAt;
   final int? remainingSeconds;
+  final int? totalScore;
 
   StudentExamAttemptInfo({
     required this.status,
@@ -373,6 +374,7 @@ class StudentExamAttemptInfo {
     required this.submittedAt,
     required this.attemptDeadlineAt,
     required this.remainingSeconds,
+    this.totalScore,
   });
 
   factory StudentExamAttemptInfo.fromJson(Map<String, dynamic> json) {
@@ -382,6 +384,7 @@ class StudentExamAttemptInfo {
       submittedAt: DateTime.tryParse((json['submittedAt'] ?? '').toString()),
       attemptDeadlineAt: DateTime.tryParse((json['attemptDeadlineAt'] ?? '').toString()),
       remainingSeconds: (json['remainingSeconds'] as num?)?.toInt(),
+      totalScore: (json['totalScore'] as num?)?.toInt(),
     );
   }
 }
@@ -913,13 +916,38 @@ class NotificationItem {
   }
 }
 
+class ParticipationMember {
+  final int id;
+  final StudentSummary user;
+  final String role; // 'LEADER' or 'MEMBER'
+  final String status;
+
+  ParticipationMember({
+    required this.id,
+    required this.user,
+    required this.role,
+    required this.status,
+  });
+
+  bool get isLeader => role == 'LEADER';
+
+  factory ParticipationMember.fromJson(Map<String, dynamic> json) {
+    return ParticipationMember(
+      id: json['id'] ?? 0,
+      user: StudentSummary.fromJson((json['user'] ?? {}) as Map<String, dynamic>),
+      role: json['role'] ?? 'MEMBER',
+      status: json['status'] ?? '',
+    );
+  }
+}
+
 class MyExamParticipation {
   final int participationId;
   final int examId;
   final int examPracticeId;
   final Practice practice;
   final String status;
-  final List<StudentSummary> members;
+  final List<ParticipationMember> members;
   final PracticeSubmission? submission;
 
   MyExamParticipation({
@@ -940,10 +968,9 @@ class MyExamParticipation {
       examPracticeId: json['examPracticeId'] ?? 0,
       practice: Practice.fromJson((json['practice'] ?? {}) as Map<String, dynamic>),
       status: json['status'] ?? '',
-      members: membersRaw.map((m) {
-        final user = ((m as Map<String, dynamic>)['user'] ?? {}) as Map<String, dynamic>;
-        return StudentSummary.fromJson(user);
-      }).toList(),
+      members: membersRaw
+          .map((m) => ParticipationMember.fromJson(m as Map<String, dynamic>))
+          .toList(),
       submission: json['submission'] == null
           ? null
           : PracticeSubmission.fromJson(json['submission'] as Map<String, dynamic>),

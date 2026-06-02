@@ -244,6 +244,7 @@ class StudentExam {
   final DateTime? endAt;
   final String type;
   final String status;
+  final String myStatus;
   final int practiceCount;
   final int questionCount;
   final int taskLimit;
@@ -257,6 +258,7 @@ class StudentExam {
     required this.endAt,
     required this.type,
     required this.status,
+    required this.myStatus,
     required this.practiceCount,
     required this.questionCount,
     required this.taskLimit,
@@ -274,6 +276,7 @@ class StudentExam {
       endAt: DateTime.tryParse((json['endAt'] ?? '').toString()),
       type: json['type'] ?? '',
       status: json['status'] ?? '',
+      myStatus: json['myStatus'] ?? 'NOT_STARTED',
       practiceCount: practices.length,
       questionCount: questions.length,
       taskLimit: (json['taskLimit'] as num?)?.toInt() ?? 0,

@@ -133,7 +133,7 @@ class _ExamCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          _StatusBadge(status: exam.status),
+                          _MyStatusBadge(myStatus: exam.myStatus),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -1453,8 +1453,6 @@ class _ExamHeaderCard extends StatelessWidget {
                         fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
-                const SizedBox(width: 8),
-                _StatusBadge(status: exam.status),
               ],
             ),
             if (exam.description.isNotEmpty) ...[
@@ -1779,6 +1777,44 @@ class _InfoChip extends StatelessWidget {
                   color: color, fontSize: 12, fontWeight: FontWeight.w500)),
         ],
       ),
+    );
+  }
+}
+
+class _MyStatusBadge extends StatelessWidget {
+  final String myStatus;
+  const _MyStatusBadge({required this.myStatus});
+
+  (Color, String) get _info {
+    switch (myStatus) {
+      case 'IN_PROGRESS':
+        return (Colors.blue.shade600, 'В процессе');
+      case 'SUBMITTED':
+        return (Colors.orange.shade700, 'На проверке');
+      case 'GRADED':
+        return (Colors.green.shade700, 'Оценено');
+      case 'RETURNED':
+        return (Colors.red.shade600, 'Возвращено');
+      default:
+        return (Colors.grey.shade500, 'Не начато');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, label) = _info;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              color: color,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600)),
     );
   }
 }

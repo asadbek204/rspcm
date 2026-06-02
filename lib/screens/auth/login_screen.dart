@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/theme/app_theme.dart';
-import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -148,20 +147,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       );
                     },
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Нет аккаунта?'),
-                      TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                        ),
-                        child: Text('Регистрация', style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
                   ),
                 ],
               ),

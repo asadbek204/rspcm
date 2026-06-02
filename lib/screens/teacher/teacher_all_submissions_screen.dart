@@ -968,6 +968,38 @@ class _AttemptReviewScreenState extends State<AttemptReviewScreen> {
     }
   }
 
+  void _finishReview() {
+    final ungradedCount = _answers
+        .where((a) => a.questionType == 'OPEN' && a.score == null)
+        .length;
+
+    if (ungradedCount > 0) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Не все вопросы проверены'),
+          content: Text(
+              'Осталось $ungradedCount открыт${ungradedCount == 1 ? 'ый вопрос без оценки' : 'ых вопроса без оценки'}. '
+              'Поставьте баллы по всем открытым вопросам, чтобы завершить проверку.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Понятно'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // All open questions graded — go back
+    widget.onRefresh();
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Проверка завершена')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -981,11 +1013,42 @@ class _AttemptReviewScreenState extends State<AttemptReviewScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _answers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 14),
-              itemBuilder: (ctx, i) => _buildAnswerCard(_answers[i], theme),
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    itemCount: _answers.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (ctx, i) => _buildAnswerCard(_answers[i], theme),
+                  ),
+                ),
+                // ── Finish review button ──────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  decoration: BoxDecoration(
+                    color: theme.scaffoldBackgroundColor,
+                    border: Border(
+                        top: BorderSide(
+                            color: Colors.grey.withValues(alpha: 0.15))),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _finishReview,
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Завершить проверку'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
     );
   }

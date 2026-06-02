@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/language_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/models.dart';
+import '../../l10n/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -29,6 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final theme = Theme.of(context);
     final authProvider = Provider.of<AuthProvider>(context);
     final profile = authProvider.profile;
+    final l = AppLocalizations.of(context);
 
     if (authProvider.isLoading && profile == null) {
       return const Center(child: CircularProgressIndicator());
@@ -40,11 +43,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Не удалось загрузить профиль'),
+              Text(l.profileLoadError),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () => authProvider.fetchProfile(),
-                child: const Text('Повторить'),
+                child: Text(l.profileRetry),
               ),
             ],
           ),
@@ -57,12 +60,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          _buildProfileCard(context, profile),
+          _buildProfileCard(context, profile, l),
           const SizedBox(height: 30),
-          _buildInfoSection(theme, profile),
+          _buildInfoSection(theme, profile, l),
           const SizedBox(height: 30),
           Text(
-            'Тема оформления',
+            l.profileTheme,
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 15),
@@ -74,24 +77,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisSpacing: 15,
             childAspectRatio: 1.1,
             children: [
-              _buildThemeOption(context, AppThemeType.darkGold, 'Темное золото', Colors.black, const Color(0xFFFFB300)),
-              _buildThemeOption(context, AppThemeType.darkEmerald, 'Темный изумруд', Colors.black, const Color(0xFF2ECC71)),
-              _buildThemeOption(context, AppThemeType.softLatte, 'Мягкий латте', const Color(0xFFFFF8F3), const Color(0xFF795548)),
-              _buildThemeOption(context, AppThemeType.softZinc, 'Мягкий цинк', const Color(0xFFF9F9F9), const Color(0xFF18181B)),
+              _buildThemeOption(context, AppThemeType.darkGold, l.profileThemeDarkGold, Colors.black, const Color(0xFFFFB300)),
+              _buildThemeOption(context, AppThemeType.darkEmerald, l.profileThemeDarkEmerald, Colors.black, const Color(0xFF2ECC71)),
+              _buildThemeOption(context, AppThemeType.softLatte, l.profileThemeLatte, const Color(0xFFFFF8F3), const Color(0xFF795548)),
+              _buildThemeOption(context, AppThemeType.softZinc, l.profileThemeZinc, const Color(0xFFF9F9F9), const Color(0xFF18181B)),
             ],
           ),
+          const SizedBox(height: 30),
+          Text(
+            l.profileLanguage,
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 15),
+          _buildLanguageSwitcher(context),
           const SizedBox(height: 40),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => _showLogoutDialog(context),
+              onPressed: () => _showLogoutDialog(context, l),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.withValues(alpha: 0.1),
                 foregroundColor: Colors.red,
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 elevation: 0,
               ),
-              child: const Text('Выйти', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(l.profileLogout, style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -99,7 +109,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileCard(BuildContext context, StudentProfileResponse profile) {
+  Widget _buildLanguageSwitcher(BuildContext context) {
+    final theme = Theme.of(context);
+    final langProvider = Provider.of<LanguageProvider>(context);
+    final current = langProvider.languageCode;
+
+    return Row(
+      children: [
+        Expanded(child: _buildLangButton(context, theme, 'ru', 'Русский', current)),
+        const SizedBox(width: 15),
+        Expanded(child: _buildLangButton(context, theme, 'uz', "O'zbek", current)),
+      ],
+    );
+  }
+
+  Widget _buildLangButton(BuildContext context, ThemeData theme, String code, String label, String current) {
+    final isSelected = current == code;
+    return GestureDetector(
+      onTap: () => Provider.of<LanguageProvider>(context, listen: false).setLanguage(code),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: isSelected ? theme.primaryColor : Colors.grey.withValues(alpha: 0.2),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? theme.primaryColor : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileCard(BuildContext context, StudentProfileResponse profile, AppLocalizations l) {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
@@ -133,11 +184,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () => _showEditProfileDialog(context, profile),
+              onPressed: () => _showEditProfileDialog(context, profile, l),
               style: OutlinedButton.styleFrom(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Редактировать профиль'),
+              child: Text(l.profileEdit),
             ),
           ),
         ],
@@ -145,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoSection(ThemeData theme, StudentProfileResponse profile) {
+  Widget _buildInfoSection(ThemeData theme, StudentProfileResponse profile, AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -155,11 +206,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          _buildInfoRow(Icons.email_outlined, 'Email', profile.email.isNotEmpty ? profile.email : 'Н/Д', theme),
+          _buildInfoRow(Icons.email_outlined, l.profileEmail,
+              profile.email.isNotEmpty ? profile.email : l.profileNA, theme),
           const Divider(height: 30),
-          _buildInfoRow(Icons.phone_outlined, 'Телефон', profile.phoneNumber.isNotEmpty ? profile.phoneNumber : 'Н/Д', theme),
+          _buildInfoRow(Icons.phone_outlined, l.profilePhone,
+              profile.phoneNumber.isNotEmpty ? profile.phoneNumber : l.profileNA, theme),
           const Divider(height: 30),
-          _buildInfoRow(Icons.school_outlined, 'Курс', '${profile.course} курс', theme),
+          _buildInfoRow(Icons.school_outlined, l.profileCourse,
+              '${profile.course}${l.profileCourseSuffix}', theme),
         ],
       ),
     );
@@ -181,33 +235,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showEditProfileDialog(BuildContext context, StudentProfileResponse? profile) {
+  void _showEditProfileDialog(BuildContext context, StudentProfileResponse? profile, AppLocalizations l) {
     int selectedCourse = profile?.course != null && profile!.course > 0 ? profile.course : 1;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Редактировать профиль'),
+        title: Text(l.profileEditTitle),
         content: StatefulBuilder(
           builder: (context, setDialogState) => DropdownButtonFormField<int>(
             initialValue: selectedCourse,
-            decoration: const InputDecoration(labelText: 'Курс'),
+            decoration: InputDecoration(labelText: l.profileCourseLabel),
             items: List.generate(
               8,
               (index) => DropdownMenuItem<int>(
                 value: index + 1,
-                child: Text('${index + 1} курс'),
+                child: Text('${index + 1}${l.profileCourseSuffix}'),
               ),
             ),
             onChanged: (value) {
-              if (value != null) {
-                setDialogState(() => selectedCourse = value);
-              }
+              if (value != null) setDialogState(() => selectedCourse = value);
             },
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l.cancel)),
           ElevatedButton(
             onPressed: () async {
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -215,34 +267,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(updated ? 'Профиль обновлен' : 'Не удалось обновить профиль'),
-                  ),
+                  SnackBar(content: Text(updated ? l.profileUpdateSuccess : l.profileUpdateError)),
                 );
               }
             },
-            child: const Text('Сохранить'),
+            child: Text(l.save),
           ),
         ],
       ),
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context, AppLocalizations l) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Выход'),
-        content: const Text('Вы уверены, что хотите выйти?'),
+        title: Text(l.profileLogoutTitle),
+        content: Text(l.profileLogoutConfirm),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l.cancel)),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               Provider.of<AuthProvider>(context, listen: false).logout();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Выйти'),
+            child: Text(l.profileLogout),
           ),
         ],
       ),
@@ -279,17 +329,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Container(
                   width: 30,
                   height: 5,
-                  decoration: BoxDecoration(
-                    color: iconColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  decoration: BoxDecoration(color: iconColor, borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ),
             const SizedBox(height: 10),
             Text(name, style: TextStyle(
-              color: themeProvider.themeData.textTheme.bodyMedium?.color, 
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+              color: themeProvider.themeData.textTheme.bodyMedium?.color,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             )),
           ],
         ),

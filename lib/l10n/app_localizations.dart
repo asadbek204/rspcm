@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 
 abstract class AppLocalizations {
+  const AppLocalizations();
+
   static AppLocalizations of(BuildContext context) {
     final lang =
         Provider.of<LanguageProvider>(context, listen: false).languageCode;

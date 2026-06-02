@@ -116,6 +116,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         });
       },
       eventLoader: _getEventsForDay,
+      daysOfWeekHeight: 24,
       calendarStyle: CalendarStyle(
         todayDecoration: BoxDecoration(
           color: theme.primaryColor.withValues(alpha: 0.2),

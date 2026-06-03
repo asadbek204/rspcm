@@ -15,22 +15,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  String? _identifierError;
-  String? _passwordError;
-
-  @override
-  void initState() {
-    super.initState();
-    _identifierController.addListener(() {
-      if (_identifierError != null) setState(() => _identifierError = null);
-    });
-    _passwordController.addListener(() {
-      if (_passwordError != null) setState(() => _passwordError = null);
-    });
-  }
+  bool _submitted = false;
 
   @override
   void dispose() {
@@ -40,25 +29,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    final identifier = _identifierController.text.trim();
-    final password = _passwordController.text;
-
-    String? idErr;
-    String? pwErr;
-    if (identifier.isEmpty) idErr = 'Введите email или номер студента';
-    if (password.isEmpty) pwErr = 'Введите пароль';
-
-    if (idErr != null || pwErr != null) {
-      setState(() {
-        _identifierError = idErr;
-        _passwordError = pwErr;
-      });
-      return;
-    }
+    setState(() => _submitted = true);
+    if (!_formKey.currentState!.validate()) return;
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     try {
-      await auth.login(identifier, password);
+      await auth.login(
+        _identifierController.text.trim(),
+        _passwordController.text,
+      );
       if (!mounted) return;
       TextInput.finishAutofillContext(shouldSave: true);
     } catch (e) {
@@ -117,36 +96,50 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(color: Colors.grey.shade500),
                   ),
                   const SizedBox(height: 50),
-                  AutofillGroup(
-                    child: Column(
-                      children: [
-                        _buildTextField(
-                          controller: _identifierController,
-                          hint: l.loginEmailOrId,
-                          icon: Icons.person_outline,
-                          autofillHints: const [AutofillHints.username, AutofillHints.email],
-                          textInputAction: TextInputAction.next,
-                          keyboardType: TextInputType.emailAddress,
-                          errorText: _identifierError,
-                          theme: theme,
-                        ),
-                        const SizedBox(height: 20),
-                        _buildTextField(
-                          controller: _passwordController,
-                          hint: l.loginPassword,
-                          icon: Icons.lock_outline,
-                          obscure: _obscurePassword,
-                          autofillHints: const [AutofillHints.password],
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => _handleLogin(),
-                          errorText: _passwordError,
-                          theme: theme,
-                          suffix: IconButton(
-                            icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 20),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  Form(
+                    key: _formKey,
+                    autovalidateMode: _submitted
+                        ? AutovalidateMode.onUserInteraction
+                        : AutovalidateMode.disabled,
+                    child: AutofillGroup(
+                      child: Column(
+                        children: [
+                          _buildField(
+                            controller: _identifierController,
+                            hint: l.loginEmailOrId,
+                            icon: Icons.person_outline,
+                            autofillHints: const [AutofillHints.username, AutofillHints.email],
+                            textInputAction: TextInputAction.next,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Введите email или номер студента'
+                                : null,
+                            theme: theme,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 20),
+                          _buildField(
+                            controller: _passwordController,
+                            hint: l.loginPassword,
+                            icon: Icons.lock_outline,
+                            obscure: _obscurePassword,
+                            autofillHints: const [AutofillHints.password],
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _handleLogin(),
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'Введите пароль'
+                                : null,
+                            theme: theme,
+                            suffix: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                size: 20,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _obscurePassword = !_obscurePassword),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 15),
@@ -187,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTextField({
+  Widget _buildField({
     required TextEditingController controller,
     required String hint,
     required IconData icon,
@@ -195,61 +188,47 @@ class _LoginScreenState extends State<LoginScreen> {
     TextInputAction? textInputAction,
     TextInputType? keyboardType,
     ValueChanged<String>? onSubmitted,
+    FormFieldValidator<String>? validator,
     bool obscure = false,
     Widget? suffix,
-    String? errorText,
     required ThemeData theme,
   }) {
-    final hasError = errorText != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: hasError
-                ? Colors.red.withValues(alpha: 0.06)
-                : theme.cardColor.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(
-              color: hasError ? Colors.red.shade400 : Colors.white10,
-              width: hasError ? 1.5 : 1,
-            ),
-          ),
-          child: TextField(
-            controller: controller,
-            obscureText: obscure,
-            autofillHints: autofillHints,
-            textInputAction: textInputAction,
-            keyboardType: keyboardType,
-            onSubmitted: onSubmitted,
-            decoration: InputDecoration(
-              hintText: hint,
-              prefixIcon: Icon(
-                icon,
-                color: hasError ? Colors.red.shade400 : theme.primaryColor,
-                size: 22,
-              ),
-              suffixIcon: suffix,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-            ),
-          ),
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      autofillHints: autofillHints,
+      textInputAction: textInputAction,
+      keyboardType: keyboardType,
+      onFieldSubmitted: onSubmitted,
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, color: theme.primaryColor, size: 22),
+        suffixIcon: suffix,
+        filled: true,
+        fillColor: theme.cardColor.withValues(alpha: 0.5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Colors.white10),
         ),
-        if (hasError) ...[
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.error_outline, size: 13, color: Colors.red.shade400),
-              const SizedBox(width: 4),
-              Text(
-                errorText,
-                style: TextStyle(color: Colors.red.shade400, fontSize: 12),
-              ),
-            ],
-          ),
-        ],
-      ],
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Colors.white10),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: theme.primaryColor, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'core/app_snackbar.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/language_provider.dart';
@@ -58,6 +59,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           title: 'RSPCM',
           debugShowCheckedModeBanner: false,
+          scaffoldMessengerKey: AppSnackbar.messengerKey,
           locale: const Locale('ru', 'RU'),
           supportedLocales: const [Locale('ru', 'RU'), Locale('uz')],
           localizationsDelegates: const [

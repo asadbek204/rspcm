@@ -3,6 +3,7 @@ import '../models/models.dart';
 import '../models/auth_models.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_endpoints.dart';
+import '../core/app_snackbar.dart';
 
 class ApiService {
   final ApiClient _apiClient = ApiClient();
@@ -24,7 +25,7 @@ class ApiService {
       await _apiClient.post(ApiEndpoints.verifyOtp, request.toJson());
       return true;
     } catch (e) {
-      print('API Error (Verify OTP): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -34,7 +35,7 @@ class ApiService {
       await _apiClient.post(ApiEndpoints.resendOtp, request.toJson());
       return true;
     } catch (e) {
-      print('API Error (Resend OTP): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -140,7 +141,7 @@ class ApiService {
       });
       return true;
     } catch (e) {
-      print('API Error (Create Team): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -153,7 +154,7 @@ class ApiService {
       );
       return true;
     } catch (e) {
-      print('API Error (Invite Members): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -183,7 +184,7 @@ class ApiService {
       await _apiClient.post(ApiEndpoints.createJournal, body);
       return true;
     } catch (e) {
-      print('API Error (Create Journal): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -241,7 +242,7 @@ class ApiService {
       await _apiClient.post('${ApiEndpoints.examSelectPractice}/$examId/practices/$examPracticeId/select', {});
       return true;
     } catch (e) {
-      print('API Error (Select Exam Practice): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -251,7 +252,7 @@ class ApiService {
       await _apiClient.delete('${ApiEndpoints.examMyParticipation}/$examId/participation/me');
       return true;
     } catch (e) {
-      print('API Error (Cancel Participation): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -274,7 +275,7 @@ class ApiService {
       await _apiClient.delete('${ApiEndpoints.removeTeamMember}/$participationId/members/$memberId');
       return true;
     } catch (e) {
-      print('API Error (Remove Team Member): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -284,7 +285,7 @@ class ApiService {
       await _apiClient.delete('${ApiEndpoints.leaveMyTeam}/$participationId/members/me');
       return true;
     } catch (e) {
-      print('API Error (Leave Team): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -315,7 +316,7 @@ class ApiService {
       );
       return true;
     } catch (e) {
-      print('API Error (Submit Practice Submission): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -339,7 +340,7 @@ class ApiService {
       await _apiClient.post('${ApiEndpoints.examAttemptStart}/$examId/attempt/start', {});
       return true;
     } catch (e) {
-      print('API Error (Start Exam Attempt): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -384,7 +385,7 @@ class ApiService {
       );
       return true;
     } catch (e) {
-      print('API Error (Save Exam Answer): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -394,7 +395,7 @@ class ApiService {
       await _apiClient.post('${ApiEndpoints.examAttemptSubmit}/$examId/attempt/submit', {});
       return true;
     } catch (e) {
-      print('API Error (Submit Exam Attempt): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -415,7 +416,7 @@ class ApiService {
       await _apiClient.post('/practice-participations/$participationId/members/accept', {});
       return true;
     } catch (e) {
-      print('API Error (Accept Invitation): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -425,7 +426,7 @@ class ApiService {
       await _apiClient.post('/practice-participations/$participationId/members/decline', {});
       return true;
     } catch (e) {
-      print('API Error (Decline Invitation): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -455,7 +456,7 @@ class ApiService {
       await _apiClient.post(ApiEndpoints.answers, body);
       return true;
     } catch (e) {
-      print('API Error (Submit Answer): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -497,7 +498,7 @@ class ApiService {
       final response = await _apiClient.post(ApiEndpoints.directChat, {'userId': targetUserId});
       return json.decode(response.body) as Map<String, dynamic>;
     } catch (e) {
-      print('API Error (Direct Chat): $e');
+      AppSnackbar.showError(e);
       return null;
     }
   }
@@ -537,7 +538,7 @@ class ApiService {
       await _apiClient.post('${ApiEndpoints.chats}/$chatId/members', {'userId': userId});
       return true;
     } catch (e) {
-      print('API Error (Add Chat Member): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -547,7 +548,7 @@ class ApiService {
       await _apiClient.post('${ApiEndpoints.chats}/$chatId/messages', {'message': message});
       return true;
     } catch (e) {
-      print('API Error (Send Chat Message): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -647,7 +648,7 @@ class ApiService {
       final response = await _apiClient.post(ApiEndpoints.teacherExams, body);
       return TeacherExam.fromJson(json.decode(response.body) as Map<String, dynamic>);
     } catch (e) {
-      print('API Error (Create Exam): $e');
+      AppSnackbar.showError(e);
       return null;
     }
   }
@@ -657,7 +658,7 @@ class ApiService {
       final response = await _apiClient.put('${ApiEndpoints.teacherExams}/$examId', body);
       return TeacherExam.fromJson(json.decode(response.body) as Map<String, dynamic>);
     } catch (e) {
-      print('API Error (Update Exam): $e');
+      AppSnackbar.showError(e);
       return null;
     }
   }
@@ -667,7 +668,7 @@ class ApiService {
       await _apiClient.delete('${ApiEndpoints.teacherExams}/$examId');
       return true;
     } catch (e) {
-      print('API Error (Delete Exam): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -677,7 +678,7 @@ class ApiService {
       await _apiClient.patch('${ApiEndpoints.teacherExams}/$examId/status?status=$status');
       return true;
     } catch (e) {
-      print('API Error (Update Exam Status): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -705,7 +706,7 @@ class ApiService {
       final response = await _apiClient.post(ApiEndpoints.teacherPractices, body);
       return TeacherPractice.fromJson(json.decode(response.body) as Map<String, dynamic>);
     } catch (e) {
-      print('API Error (Create Practice): $e');
+      AppSnackbar.showError(e);
       return null;
     }
   }
@@ -715,7 +716,7 @@ class ApiService {
       final response = await _apiClient.put('${ApiEndpoints.teacherPractices}/$id', body);
       return TeacherPractice.fromJson(json.decode(response.body) as Map<String, dynamic>);
     } catch (e) {
-      print('API Error (Update Practice): $e');
+      AppSnackbar.showError(e);
       return null;
     }
   }
@@ -725,7 +726,7 @@ class ApiService {
       await _apiClient.delete('${ApiEndpoints.teacherPractices}/$id');
       return true;
     } catch (e) {
-      print('API Error (Delete Practice): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -759,7 +760,7 @@ class ApiService {
       });
       return true;
     } catch (e) {
-      print('API Error (Add Practice to Exam): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -769,7 +770,7 @@ class ApiService {
       await _apiClient.delete('${ApiEndpoints.examPracticesTeacher}/$examPracticeId');
       return true;
     } catch (e) {
-      print('API Error (Remove Practice from Exam): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -803,7 +804,7 @@ class ApiService {
       );
       return true;
     } catch (e) {
-      print('API Error (Grade Submission): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -816,7 +817,7 @@ class ApiService {
       );
       return true;
     } catch (e) {
-      print('API Error (Return Submission): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -862,7 +863,7 @@ class ApiService {
       );
       return true;
     } catch (e) {
-      print('API Error (Score Answer): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -890,7 +891,7 @@ class ApiService {
       final response = await _apiClient.post(ApiEndpoints.teacherQuestions, body);
       return TeacherQuestion.fromJson(json.decode(response.body) as Map<String, dynamic>);
     } catch (e) {
-      print('API Error (Create Question): $e');
+      AppSnackbar.showError(e);
       return null;
     }
   }
@@ -900,7 +901,7 @@ class ApiService {
       final response = await _apiClient.put('${ApiEndpoints.teacherQuestions}/$id', body);
       return TeacherQuestion.fromJson(json.decode(response.body) as Map<String, dynamic>);
     } catch (e) {
-      print('API Error (Update Question): $e');
+      AppSnackbar.showError(e);
       return null;
     }
   }
@@ -910,7 +911,7 @@ class ApiService {
       await _apiClient.delete('${ApiEndpoints.teacherQuestions}/$id');
       return true;
     } catch (e) {
-      print('API Error (Delete Question): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }
@@ -947,7 +948,7 @@ class ApiService {
           '${ApiEndpoints.notifications}/$notificationId/read');
       return NotificationItem.fromJson(json.decode(response.body) as Map<String, dynamic>);
     } catch (e) {
-      print('API Error (Mark Notification Read): $e');
+      AppSnackbar.showError(e);
       return null;
     }
   }
@@ -957,7 +958,7 @@ class ApiService {
       await _apiClient.patch(ApiEndpoints.notificationsReadAll);
       return true;
     } catch (e) {
-      print('API Error (Mark All Read): $e');
+      AppSnackbar.showError(e);
       return false;
     }
   }

@@ -165,8 +165,8 @@ class _ChatViewScreenState extends State<ChatViewScreen> {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+        margin: const EdgeInsets.symmetric(vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         constraints:
             BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
@@ -228,37 +228,56 @@ class _ChatViewScreenState extends State<ChatViewScreen> {
   }
 
   Widget _buildInputArea(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      color: theme.cardColor,
-      child: Row(
-        children: [
-          IconButton(icon: const Icon(Icons.attach_file), onPressed: () {}),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: TextField(
-                controller: _controller,
-                decoration: const InputDecoration(
-                  hintText: 'Сообщение',
-                  border: InputBorder.none,
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        color: theme.cardColor,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.attach_file, size: 22),
+              onPressed: () {},
+              padding: const EdgeInsets.all(6),
+              constraints: const BoxConstraints(),
+            ),
+            Expanded(
+              child: Container(
+                constraints: const BoxConstraints(maxHeight: 120),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.scaffoldBackgroundColor,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: TextField(
+                  controller: _controller,
+                  maxLines: null,
+                  decoration: const InputDecoration(
+                    hintText: 'Сообщение',
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 5),
-          CircleAvatar(
-            backgroundColor: theme.primaryColor,
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: _sendMessage,
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: _sendMessage,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: theme.primaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.send, color: Colors.white, size: 18),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

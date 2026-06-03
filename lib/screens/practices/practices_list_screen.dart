@@ -68,28 +68,53 @@ class _PracticesListScreenState extends State<PracticesListScreen> {
     }
 
     if (_items.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.assignment_outlined, size: 72, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text('Нет активных практик',
-                style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            Text('Перейдите во вкладку «Экзамены»,\nоткройте экзамен и выберите вариант практики',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Обновить'),
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.assignment_outlined,
+                        size: 72, color: Colors.grey.shade300),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Нет активных практик',
+                      style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Перейдите во вкладку «Экзамены»,\nоткройте экзамен и выберите вариант практики',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: Colors.grey.shade400, fontSize: 13),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.arrow_downward,
+                            size: 14, color: Colors.grey.shade400),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Потяните вниз для обновления',
+                          style: TextStyle(
+                              color: Colors.grey.shade400, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
+          ),
         ),
       );
     }

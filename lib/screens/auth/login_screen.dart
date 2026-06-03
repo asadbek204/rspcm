@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/app_snackbar.dart';
 import '../../l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,6 +18,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  String? _identifierError;
+  String? _passwordError;
+
+  @override
+  void initState() {
+    super.initState();
+    _identifierController.addListener(() {
+      if (_identifierError != null) setState(() => _identifierError = null);
+    });
+    _passwordController.addListener(() {
+      if (_passwordError != null) setState(() => _passwordError = null);
+    });
+  }
 
   @override
   void dispose() {
@@ -26,17 +40,29 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
+    final identifier = _identifierController.text.trim();
+    final password = _passwordController.text;
+
+    String? idErr;
+    String? pwErr;
+    if (identifier.isEmpty) idErr = 'Введите email или номер студента';
+    if (password.isEmpty) pwErr = 'Введите пароль';
+
+    if (idErr != null || pwErr != null) {
+      setState(() {
+        _identifierError = idErr;
+        _passwordError = pwErr;
+      });
+      return;
+    }
+
     final auth = Provider.of<AuthProvider>(context, listen: false);
     try {
-      await auth.login(_identifierController.text.trim(), _passwordController.text);
+      await auth.login(identifier, password);
       if (!mounted) return;
       TextInput.finishAutofillContext(shouldSave: true);
     } catch (e) {
-      if (!mounted) return;
-      final l = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${l.loginError}${e.toString()}')),
-      );
+      AppSnackbar.showError(e);
     }
   }
 
@@ -101,6 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           autofillHints: const [AutofillHints.username, AutofillHints.email],
                           textInputAction: TextInputAction.next,
                           keyboardType: TextInputType.emailAddress,
+                          errorText: _identifierError,
                           theme: theme,
                         ),
                         const SizedBox(height: 20),
@@ -112,6 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           autofillHints: const [AutofillHints.password],
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _handleLogin(),
+                          errorText: _passwordError,
                           theme: theme,
                           suffix: IconButton(
                             icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 20),
@@ -169,29 +197,59 @@ class _LoginScreenState extends State<LoginScreen> {
     ValueChanged<String>? onSubmitted,
     bool obscure = false,
     Widget? suffix,
+    String? errorText,
     required ThemeData theme,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: TextField(
-        controller: controller,
-        obscureText: obscure,
-        autofillHints: autofillHints,
-        textInputAction: textInputAction,
-        keyboardType: keyboardType,
-        onSubmitted: onSubmitted,
-        decoration: InputDecoration(
-          hintText: hint,
-          prefixIcon: Icon(icon, color: theme.primaryColor, size: 22),
-          suffixIcon: suffix,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+    final hasError = errorText != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: hasError
+                ? Colors.red.withValues(alpha: 0.06)
+                : theme.cardColor.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: hasError ? Colors.red.shade400 : Colors.white10,
+              width: hasError ? 1.5 : 1,
+            ),
+          ),
+          child: TextField(
+            controller: controller,
+            obscureText: obscure,
+            autofillHints: autofillHints,
+            textInputAction: textInputAction,
+            keyboardType: keyboardType,
+            onSubmitted: onSubmitted,
+            decoration: InputDecoration(
+              hintText: hint,
+              prefixIcon: Icon(
+                icon,
+                color: hasError ? Colors.red.shade400 : theme.primaryColor,
+                size: 22,
+              ),
+              suffixIcon: suffix,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            ),
+          ),
         ),
-      ),
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.error_outline, size: 13, color: Colors.red.shade400),
+              const SizedBox(width: 4),
+              Text(
+                errorText,
+                style: TextStyle(color: Colors.red.shade400, fontSize: 12),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

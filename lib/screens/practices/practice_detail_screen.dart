@@ -28,7 +28,9 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
   PracticeTeamResponse? _team;
   PracticeSubmission? _submission;
   List<PracticeJournal> _journals = [];
+  List<PracticeSubmissionAttemptItem> _history = [];
   bool _loading = true;
+  bool _historyLoading = false;
 
   // Submission form
   final _submissionController = TextEditingController();
@@ -90,6 +92,17 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
       }
       _loading = false;
     });
+
+    // Load submission history separately (non-blocking)
+    if (_submission != null) {
+      setState(() => _historyLoading = true);
+      try {
+        final history = await _api.getSubmissionHistory(_submission!.id);
+        if (mounted) setState(() { _history = history; _historyLoading = false; });
+      } catch (_) {
+        if (mounted) setState(() => _historyLoading = false);
+      }
+    }
   }
 
   Future<void> _submitWork() async {
@@ -404,6 +417,14 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
             if (_submission != null) _buildSubmissionStatusBanner(theme, _submission!),
             if (_submission != null) const SizedBox(height: 20),
 
+            // Submission history
+            if (_historyLoading || _history.isNotEmpty) ...[
+              _buildHistorySection(theme),
+              const SizedBox(height: 24),
+              Divider(color: Colors.grey.withValues(alpha: 0.2), height: 1),
+              const SizedBox(height: 24),
+            ],
+
             Text('Текст работы',
                 style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
@@ -504,6 +525,169 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHistorySection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.history_rounded, size: 18, color: theme.primaryColor),
+            const SizedBox(width: 8),
+            Text(
+              'История сдачи',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            if (_historyLoading) ...[
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: theme.primaryColor),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_history.isEmpty && !_historyLoading)
+          Text('Нет записей', style: TextStyle(color: Colors.grey.shade500)),
+        ..._history.map((a) => _buildAttemptItem(theme, a)),
+      ],
+    );
+  }
+
+  Widget _buildAttemptItem(ThemeData theme, PracticeSubmissionAttemptItem a) {
+    final fmt = DateFormat('dd MMM yyyy, HH:mm', 'ru_RU');
+    final isLast = a.attemptNumber == _history.length;
+    final color = isLast ? theme.primaryColor : Colors.grey.shade500;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline column
+          Column(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: isLast ? 0.15 : 0.08),
+                  border: Border.all(color: color.withValues(alpha: 0.4)),
+                ),
+                child: Center(
+                  child: Text(
+                    '${a.attemptNumber}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ),
+              if (a.attemptNumber < _history.length)
+                Container(
+                  width: 2,
+                  height: 40,
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  color: Colors.grey.withValues(alpha: 0.2),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          // Content
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isLast
+                    ? theme.primaryColor.withValues(alpha: 0.06)
+                    : theme.cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isLast
+                      ? theme.primaryColor.withValues(alpha: 0.25)
+                      : Colors.grey.withValues(alpha: 0.15),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.schedule, size: 13, color: Colors.grey.shade500),
+                      const SizedBox(width: 4),
+                      Text(
+                        fmt.format(a.submittedAt.toLocal()),
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                      if (isLast) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.primaryColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Последняя',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: theme.primaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (a.textAnswer.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      a.textAnswer,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(height: 1.4, fontSize: 13),
+                    ),
+                  ],
+                  if (a.fileUrl.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final uri = Uri.tryParse(a.fileUrl);
+                        if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      },
+                      child: Row(
+                        children: [
+                          Icon(Icons.link_outlined, size: 13, color: theme.primaryColor),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              a.fileUrl,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.primaryColor,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -8,10 +8,22 @@ class ApiClient {
 
   void _logRequest(String method, Uri url, {dynamic body}) {
     // Keep request logging centralized so every API call is traceable.
-    print('API REQUEST: $method $url');
+    print('→ $method $url');
     if (body != null) {
       final encodedBody = body is String ? body : jsonEncode(body);
-      print('API REQUEST BODY: $encodedBody');
+      print('  BODY: $encodedBody');
+    }
+  }
+
+  void _logResponse(http.Response response, Duration elapsed) {
+    final ms = elapsed.inMilliseconds;
+    print('← ${response.statusCode} (${ms}ms) ${response.request?.url}');
+    if (response.body.isNotEmpty) {
+      // Truncate very long bodies so the log stays readable.
+      final body = response.body.length > 500
+          ? '${response.body.substring(0, 500)}…'
+          : response.body;
+      print('  RESPONSE: $body');
     }
   }
 
@@ -37,12 +49,13 @@ class ApiClient {
 
     try {
       _logRequest('POST', url, body: data);
+      final sw = Stopwatch()..start();
       final response = await _client.post(
         url,
         headers: headers,
         body: jsonEncode(data),
       );
-      return _handleResponse(response);
+      return _handleResponse(response, sw.elapsed);
     } catch (e) {
       throw Exception('Network error: $e');
     }
@@ -54,8 +67,9 @@ class ApiClient {
 
     try {
       _logRequest('GET', url);
+      final sw = Stopwatch()..start();
       final response = await _client.get(url, headers: headers);
-      return _handleResponse(response);
+      return _handleResponse(response, sw.elapsed);
     } catch (e) {
       throw Exception('Network error: $e');
     }
@@ -67,12 +81,13 @@ class ApiClient {
 
     try {
       _logRequest('PUT', url, body: data);
+      final sw = Stopwatch()..start();
       final response = await _client.put(
         url,
         headers: headers,
         body: jsonEncode(data),
       );
-      return _handleResponse(response);
+      return _handleResponse(response, sw.elapsed);
     } catch (e) {
       throw Exception('Network error: $e');
     }
@@ -83,12 +98,13 @@ class ApiClient {
     final url = Uri.parse('${ApiEndpoints.baseUrl}$endpoint');
     try {
       _logRequest('PATCH', url, body: body);
+      final sw = Stopwatch()..start();
       final response = await _client.patch(
         url,
         headers: headers,
         body: body != null ? jsonEncode(body) : null,
       );
-      return _handleResponse(response);
+      return _handleResponse(response, sw.elapsed);
     } catch (e) {
       throw Exception('Network error: $e');
     }
@@ -100,14 +116,16 @@ class ApiClient {
 
     try {
       _logRequest('DELETE', url);
+      final sw = Stopwatch()..start();
       final response = await _client.delete(url, headers: headers);
-      return _handleResponse(response);
+      return _handleResponse(response, sw.elapsed);
     } catch (e) {
       throw Exception('Network error: $e');
     }
   }
 
-  http.Response _handleResponse(http.Response response) {
+  http.Response _handleResponse(http.Response response, Duration elapsed) {
+    _logResponse(response, elapsed);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response;
     } else if (response.statusCode == 401) {

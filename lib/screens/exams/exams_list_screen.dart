@@ -1733,7 +1733,6 @@ class _PracticeOptionCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: SizedBox(
               width: double.infinity,
-              height: 46,
               child: ElevatedButton.icon(
                 onPressed: onSelect,
                 icon: const Icon(Icons.check_circle_outline, size: 20),
@@ -1742,6 +1741,7 @@ class _PracticeOptionCard extends StatelessWidget {
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

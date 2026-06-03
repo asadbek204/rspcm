@@ -32,6 +32,7 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
 
   // Submission form
   final _submissionController = TextEditingController();
+  final _resourceUrlController = TextEditingController();
   bool _submitting = false;
 
   // Journal form
@@ -50,6 +51,7 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
   void dispose() {
     _tabController.dispose();
     _submissionController.dispose();
+    _resourceUrlController.dispose();
     _journalController.dispose();
     super.dispose();
   }
@@ -83,6 +85,7 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
         _submission = results[idx] as PracticeSubmission?;
         if (_submission != null) {
           _submissionController.text = _submission!.textAnswer;
+          _resourceUrlController.text = _submission!.fileUrl ?? '';
         }
       }
       _loading = false;
@@ -92,14 +95,20 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
   Future<void> _submitWork() async {
     if (widget.participationId == null) return;
     final text = _submissionController.text.trim();
-    if (text.isEmpty) {
-      _showSnack('Введите текст работы перед отправкой', error: true);
+    final url = _resourceUrlController.text.trim();
+    if (text.isEmpty && url.isEmpty) {
+      _showSnack('Введите текст работы или ссылку на ресурс', error: true);
+      return;
+    }
+    if (url.isNotEmpty && Uri.tryParse(url)?.hasAbsolutePath != true) {
+      _showSnack('Некорректная ссылка. Укажите полный URL (https://...)', error: true);
       return;
     }
     setState(() => _submitting = true);
     final ok = await _api.submitPracticeSubmission(
       widget.participationId!,
-      textAnswer: text,
+      textAnswer: text.isEmpty ? null : text,
+      fileUrl: url.isEmpty ? null : url,
     );
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -422,6 +431,39 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
 
             const SizedBox(height: 16),
 
+            Text('Ссылка на ресурс (необязательно)',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(
+              'GitHub, Google Drive, Figma, YouTube и т.д.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _resourceUrlController,
+              enabled: !isGraded && !isSubmitted,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              decoration: InputDecoration(
+                hintText: 'https://...',
+                prefixIcon: Icon(Icons.link_outlined, color: Colors.grey[500]),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: theme.primaryColor),
+                ),
+                filled: true,
+                fillColor: theme.cardColor,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             if (!isGraded && !isSubmitted)
               SizedBox(
                 width: double.infinity,
@@ -518,6 +560,36 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
             const SizedBox(height: 4),
             Text(submission.teacherComment, style: const TextStyle(height: 1.4)),
+          ],
+          if (submission.fileUrl.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text('Прикреплённый ресурс:',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: () async {
+                final uri = Uri.tryParse(submission.fileUrl);
+                if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.link_outlined, size: 14, color: fg),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      submission.fileUrl,
+                      style: TextStyle(
+                        color: fg,
+                        decoration: TextDecoration.underline,
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ],
       ),

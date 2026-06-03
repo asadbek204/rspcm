@@ -1,7 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stomp_dart_client/stomp_dart_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+
+// WebSocket base URL derived from the REST API base
+const String _wsBaseUrl = 'ws://68.183.79.219/ws';
 
 class ChatViewScreen extends StatefulWidget {
   final String chatId;
@@ -30,11 +36,66 @@ class _ChatViewScreenState extends State<ChatViewScreen> {
   final ScrollController _scrollController = ScrollController();
   List<Map<String, dynamic>> _messages = [];
   bool _loading = true;
+  int _onlineCount = 0;
+  StompClient? _stompClient;
+  bool _stompConnected = false;
 
   @override
   void initState() {
     super.initState();
+    _onlineCount = widget.onlineCount ?? 0;
     _loadMessages();
+    _connectWebSocket();
+  }
+
+  Future<void> _connectWebSocket() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (token == null || token.isEmpty) return;
+
+    _stompClient = StompClient(
+      config: StompConfig(
+        url: _wsBaseUrl,
+        onConnect: _onStompConnected,
+        onDisconnect: (_) {
+          if (mounted) setState(() => _stompConnected = false);
+        },
+        onWebSocketError: (e) => debugPrint('WS error: $e'),
+        onStompError: (f) => debugPrint('STOMP error: ${f.body}'),
+        stompConnectHeaders: {'Authorization': 'Bearer $token'},
+        webSocketConnectHeaders: {'Authorization': 'Bearer $token'},
+        reconnectDelay: const Duration(seconds: 5),
+      ),
+    );
+    _stompClient!.activate();
+  }
+
+  void _onStompConnected(StompFrame frame) {
+    if (!mounted) return;
+    setState(() => _stompConnected = true);
+
+    // Subscribe to the chat topic — this registers presence on the backend
+    _stompClient!.subscribe(
+      destination: '/topic/chats/${widget.chatId}',
+      callback: (frame) {
+        if (!mounted || frame.body == null) return;
+        try {
+          final msg = json.decode(frame.body!) as Map<String, dynamic>;
+          setState(() {
+            _messages.add({...msg, 'isMe': false});
+          });
+          _scrollToBottom();
+        } catch (_) {}
+      },
+    );
+
+    // After subscribing (presence is now registered), fetch fresh online count
+    _refreshOnlineCount();
+  }
+
+  Future<void> _refreshOnlineCount() async {
+    final count = await _apiService.getChatOnlineCount(widget.chatId);
+    if (mounted) setState(() => _onlineCount = count);
   }
 
   Future<void> _loadMessages() async {
@@ -56,6 +117,8 @@ class _ChatViewScreenState extends State<ChatViewScreen> {
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+
+    // Send via REST; also push via STOMP if connected (backend will broadcast)
     final ok = await _apiService.sendMessage(widget.chatId, text);
     if (!mounted) return;
     if (ok) {
@@ -78,6 +141,7 @@ class _ChatViewScreenState extends State<ChatViewScreen> {
 
   @override
   void dispose() {
+    _stompClient?.deactivate();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -95,7 +159,6 @@ class _ChatViewScreenState extends State<ChatViewScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final int members = widget.memberCount ?? 0;
-    final int online = widget.onlineCount ?? 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -106,11 +169,26 @@ class _ChatViewScreenState extends State<ChatViewScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(widget.title, style: const TextStyle(fontSize: 16)),
-              Text(
-                widget.isGroup
-                    ? '$members участников, $online онлайн'
-                    : (online > 0 ? 'в сети' : 'не в сети'),
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              Row(
+                children: [
+                  if (_stompConnected) ...[
+                    Container(
+                      width: 7,
+                      height: 7,
+                      margin: const EdgeInsets.only(right: 4),
+                      decoration: const BoxDecoration(
+                        color: Colors.greenAccent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                  Text(
+                    widget.isGroup
+                        ? '$members участников, $_onlineCount онлайн'
+                        : (_onlineCount > 0 ? 'в сети' : 'не в сети'),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
               ),
             ],
           ),

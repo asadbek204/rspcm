@@ -62,6 +62,16 @@ class _ExamsListScreenState extends State<ExamsListScreen> {
           .toList();
     }
 
+    // Sort subjects by number of exams descending (subjects with more exams appear first)
+    final examCountBySubject = <int, int>{};
+    for (final e in exams) {
+      if (e.subjectId != null) {
+        examCountBySubject[e.subjectId!] = (examCountBySubject[e.subjectId!] ?? 0) + 1;
+      }
+    }
+    subjects.sort((a, b) =>
+        (examCountBySubject[b.id] ?? 0).compareTo(examCountBySubject[a.id] ?? 0));
+
     setState(() {
       _exams = exams;
       _subjects = subjects;

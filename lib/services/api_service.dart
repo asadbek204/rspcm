@@ -513,6 +513,16 @@ class ApiService {
     }
   }
 
+  Future<int> getChatOnlineCount(String chatId) async {
+    try {
+      final response = await _apiClient.get('${ApiEndpoints.chats}/$chatId/online-count');
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      return (data['onlineCount'] as num?)?.toInt() ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getChatMembers(String chatId) async {
     try {
       final response = await _apiClient.get('${ApiEndpoints.chats}/$chatId/members');

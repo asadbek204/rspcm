@@ -5,7 +5,6 @@ import '../models/models.dart';
 import '../screens/chat/chats_list_screen.dart';
 import '../screens/chat/groups_list_screen.dart';
 import '../screens/subjects/subjects_list_screen.dart';
-import '../screens/exams/exams_list_screen.dart';
 import '../screens/practices/practices_list_screen.dart';
 
 class AppDrawer extends StatefulWidget {
@@ -46,10 +45,10 @@ class _AppDrawerState extends State<AppDrawer> {
                   context,
                   icon: Icons.assignment_outlined,
                   title: 'Практики',
-                  onTap: () {
-                    Navigator.pop(context);
-                    widget.onTabSelected(1);
-                  },
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PracticesListScreen()),
+                  ),
                 ),
                 _buildDrawerItem(
                   context,
@@ -58,15 +57,6 @@ class _AppDrawerState extends State<AppDrawer> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const SubjectsListScreen()),
-                  ),
-                ),
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.fact_check_outlined,
-                  title: 'Экзамены',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ExamsListScreen()),
                   ),
                 ),
               ],

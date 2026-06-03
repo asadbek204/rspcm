@@ -16,7 +16,6 @@ import 'screens/calendar/calendar_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/exams/exams_list_screen.dart';
-import 'screens/practices/practices_list_screen.dart';
 import 'screens/teacher/teacher_main_screen.dart';
 import 'services/api_service.dart';
 import 'widgets/app_drawer.dart';
@@ -124,7 +123,6 @@ class _MainScreenState extends State<MainScreen> {
     final l = AppLocalizations.of(context);
     return [
       l.appTitle,
-      l.navPractices,
       l.navCalendar,
       l.navExams,
       l.navProfile,
@@ -162,7 +160,6 @@ class _MainScreenState extends State<MainScreen> {
     final theme = Theme.of(context);
     final List<Widget> screens = [
       DashboardScreen(onTabSelected: (i) => _onItemTapped(i)),
-      const PracticesListScreen(),
       const CalendarScreen(),
       const ExamsListScreen(),
       const ProfileScreen(),
@@ -235,11 +232,6 @@ class _MainScreenState extends State<MainScreen> {
             icon: const Icon(Icons.dashboard_outlined),
             activeIcon: const Icon(Icons.dashboard),
             label: AppLocalizations.of(context).navHome,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.assignment_outlined),
-            activeIcon: const Icon(Icons.assignment),
-            label: AppLocalizations.of(context).navPractices,
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.calendar_today_outlined),

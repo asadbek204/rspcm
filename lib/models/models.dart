@@ -249,6 +249,8 @@ class StudentExam {
   final int questionCount;
   final int taskLimit;
   final List<ExamQuestionItem> questions;
+  final int? subjectId;
+  final String? subjectName;
 
   StudentExam({
     required this.id,
@@ -263,11 +265,14 @@ class StudentExam {
     required this.questionCount,
     required this.taskLimit,
     required this.questions,
+    this.subjectId,
+    this.subjectName,
   });
 
   factory StudentExam.fromJson(Map<String, dynamic> json) {
     final practices = (json['practices'] as List? ?? []);
     final questions = (json['questions'] as List? ?? []);
+    final subject = json['subject'] as Map<String, dynamic>?;
     return StudentExam(
       id: json['id'] ?? 0,
       title: json['title'] ?? '',
@@ -283,6 +288,8 @@ class StudentExam {
       questions: questions
           .map((e) => ExamQuestionItem.fromJson(e as Map<String, dynamic>))
           .toList(),
+      subjectId: subject?['id'] as int?,
+      subjectName: subject?['name'] as String?,
     );
   }
 }
@@ -559,6 +566,7 @@ class PracticeSubmissionAttemptItem {
   final String textAnswer;
   final String fileUrl;
   final DateTime submittedAt;
+  final String teacherComment;
 
   PracticeSubmissionAttemptItem({
     required this.id,
@@ -566,6 +574,7 @@ class PracticeSubmissionAttemptItem {
     required this.textAnswer,
     required this.fileUrl,
     required this.submittedAt,
+    required this.teacherComment,
   });
 
   factory PracticeSubmissionAttemptItem.fromJson(Map<String, dynamic> json) {
@@ -576,6 +585,7 @@ class PracticeSubmissionAttemptItem {
       fileUrl: json['fileUrl'] ?? '',
       submittedAt: DateTime.tryParse(json['submittedAt']?.toString() ?? '') ??
           DateTime.now(),
+      teacherComment: json['teacherComment'] ?? '',
     );
   }
 }

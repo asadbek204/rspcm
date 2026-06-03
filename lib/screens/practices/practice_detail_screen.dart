@@ -8,11 +8,14 @@ class PracticeDetailScreen extends StatefulWidget {
   final Practice practice;
   /// Participation ID, if already known from the list screen.
   final int? participationId;
+  /// Which tab to open initially (0 = Задание и сдача, 1 = История сдач, 2 = Дневник)
+  final int initialTab;
 
   const PracticeDetailScreen({
     super.key,
     required this.practice,
     this.participationId,
+    this.initialTab = 0,
   });
 
   @override
@@ -44,8 +47,10 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
   @override
   void initState() {
     super.initState();
+    // Задание и сдача | История | [Дневник]
     final tabs = widget.practice.calendarRequired ? 3 : 2;
-    _tabController = TabController(length: tabs, vsync: this);
+    final initial = widget.initialTab.clamp(0, tabs - 1);
+    _tabController = TabController(length: tabs, vsync: this, initialIndex: initial);
     _load();
   }
 
@@ -162,7 +167,7 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tabs = widget.practice.calendarRequired ? 3 : 2;
+    final hasJournal = widget.practice.calendarRequired;
 
     return Scaffold(
       appBar: AppBar(
@@ -182,9 +187,30 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            const Tab(text: 'Информация'),
-            const Tab(text: 'Сдача работы'),
-            if (tabs == 3) const Tab(text: 'Дневник'),
+            const Tab(text: 'Задание и сдача'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('История сдач'),
+                  if (_history.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: theme.primaryColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_history.length}',
+                        style: const TextStyle(fontSize: 10, color: Colors.black, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (hasJournal) const Tab(text: 'Дневник'),
           ],
         ),
       ),
@@ -193,36 +219,173 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildInfoTab(theme),
-                _buildSubmissionTab(theme),
-                if (tabs == 3) _buildJournalTab(theme),
+                _buildTaskAndSubmitTab(theme),
+                _buildHistoryTab(theme),
+                if (hasJournal) _buildJournalTab(theme),
               ],
             ),
     );
   }
 
-  // ─── Tab 1: Info ─────────────────────────────────────────────────────────
+  // ─── Tab 1: Task info + Submit ────────────────────────────────────────────
 
-  Widget _buildInfoTab(ThemeData theme) {
+  Widget _buildTaskAndSubmitTab(ThemeData theme) {
+    final canSubmit = widget.participationId != null;
+    final isGraded = _submission?.status == 'GRADED';
+    final isSubmitted = _submission?.status == 'SUBMITTED';
+    final isReturned = _submission?.status == 'RETURNED';
+
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(20),
-        children: [
-          _buildMetaCard(theme),
-          if (widget.practice.description.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _buildSection(theme, 'Описание', widget.practice.description),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Meta card ──
+            _buildMetaCard(theme),
+
+            if (widget.practice.description.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildSection(theme, 'Описание', widget.practice.description),
+            ],
+            if ((widget.practice.requirements ?? '').isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildSection(theme, 'Требования', widget.practice.requirements!),
+            ],
+            if (widget.practice.workMode == 'TEAM') ...[
+              const SizedBox(height: 20),
+              _buildTeamSection(theme),
+            ],
+
+            // ── Divider before submission form ──
+            const SizedBox(height: 28),
+            Divider(color: Colors.grey.withValues(alpha: 0.2), height: 1),
+            const SizedBox(height: 24),
+
+            // ── Status banner ──
+            if (_submission != null) ...[
+              _buildSubmissionStatusBanner(theme, _submission!),
+              const SizedBox(height: 20),
+            ],
+
+            if (!canSubmit) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline, color: Colors.grey.shade400, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Сдача доступна после выбора практики в экзамене.',
+                        style: TextStyle(color: Colors.grey.shade600, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              // ── Submit form ──
+              Text('Текст работы',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _submissionController,
+                maxLines: 8,
+                enabled: !isGraded && !isSubmitted,
+                decoration: InputDecoration(
+                  hintText: 'Опишите выполненную работу...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: theme.primaryColor),
+                  ),
+                  filled: true,
+                  fillColor: theme.cardColor,
+                  contentPadding: const EdgeInsets.all(16),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Ссылка на ресурс (необязательно)',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text('GitHub, Google Drive, Figma, YouTube и т.д.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _resourceUrlController,
+                enabled: !isGraded && !isSubmitted,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  hintText: 'https://...',
+                  prefixIcon: Icon(Icons.link_outlined, color: Colors.grey[500]),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: theme.primaryColor),
+                  ),
+                  filled: true,
+                  fillColor: theme.cardColor,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (!isGraded && !isSubmitted)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submitting ? null : _submitWork,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Text(
+                            isReturned ? 'Отправить повторно' : 'Отправить работу',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                  ),
+                ),
+              if (isGraded)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green),
+                      SizedBox(width: 12),
+                      Text('Работа проверена. Редактирование недоступно.',
+                          style: TextStyle(fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+            ],
           ],
-          if ((widget.practice.requirements ?? '').isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _buildSection(theme, 'Требования', widget.practice.requirements!),
-          ],
-          if (widget.practice.workMode == 'TEAM') ...[
-            const SizedBox(height: 20),
-            _buildTeamSection(theme),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -379,193 +542,51 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
     );
   }
 
-  // ─── Tab 2: Submission ─────────────────────────────────────────────────────
 
-  Widget _buildSubmissionTab(ThemeData theme) {
-    if (widget.participationId == null) {
+  Widget _buildHistoryTab(ThemeData theme) {
+    if (_historyLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_submission == null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lock_outline, size: 64, color: Colors.grey.shade400),
+              Icon(Icons.history_rounded, size: 56, color: Colors.grey.shade300),
               const SizedBox(height: 16),
-              Text(
-                'Сдача работы доступна только через экран экзамена, когда выбрана практика.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade600, height: 1.5),
-              ),
+              Text('Вы ещё не сдавали работу',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 15)),
             ],
           ),
         ),
       );
     }
-
-    final isGraded = _submission?.status == 'GRADED';
-    final isSubmitted = _submission?.status == 'SUBMITTED';
-    final isReturned = _submission?.status == 'RETURNED';
-
+    if (_history.isEmpty) {
+      return Center(
+        child: Text('Нет записей', style: TextStyle(color: Colors.grey.shade500)),
+      );
+    }
     return RefreshIndicator(
       onRefresh: _load,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+      child: ListView.builder(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_submission != null) _buildSubmissionStatusBanner(theme, _submission!),
-            if (_submission != null) const SizedBox(height: 20),
-
-            // Submission history
-            if (_historyLoading || _history.isNotEmpty) ...[
-              _buildHistorySection(theme),
-              const SizedBox(height: 24),
-              Divider(color: Colors.grey.withValues(alpha: 0.2), height: 1),
-              const SizedBox(height: 24),
-            ],
-
-            Text('Текст работы',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: _submissionController,
-              maxLines: 8,
-              enabled: !isGraded && !isSubmitted,
-              decoration: InputDecoration(
-                hintText: 'Опишите выполненную работу...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: theme.primaryColor),
-                ),
-                filled: true,
-                fillColor: theme.cardColor,
-                contentPadding: const EdgeInsets.all(16),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            Text('Ссылка на ресурс (необязательно)',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(
-              'GitHub, Google Drive, Figma, YouTube и т.д.',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _resourceUrlController,
-              enabled: !isGraded && !isSubmitted,
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              decoration: InputDecoration(
-                hintText: 'https://...',
-                prefixIcon: Icon(Icons.link_outlined, color: Colors.grey[500]),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: theme.primaryColor),
-                ),
-                filled: true,
-                fillColor: theme.cardColor,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            if (!isGraded && !isSubmitted)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitting ? null : _submitWork,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 20, height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text(
-                          isReturned ? 'Отправить повторно' : 'Отправить работу',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                ),
-              ),
-
-            if (isGraded)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green),
-                    SizedBox(width: 12),
-                    Text('Работа проверена. Редактирование недоступно.',
-                        style: TextStyle(fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-          ],
-        ),
+        itemCount: _history.length,
+        itemBuilder: (_, i) => _buildAttemptItem(theme, _history[i]),
       ),
-    );
-  }
-
-  Widget _buildHistorySection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.history_rounded, size: 18, color: theme.primaryColor),
-            const SizedBox(width: 8),
-            Text(
-              'История сдачи',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            if (_historyLoading) ...[
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2, color: theme.primaryColor),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (_history.isEmpty && !_historyLoading)
-          Text('Нет записей', style: TextStyle(color: Colors.grey.shade500)),
-        ..._history.map((a) => _buildAttemptItem(theme, a)),
-      ],
     );
   }
 
   Widget _buildAttemptItem(ThemeData theme, PracticeSubmissionAttemptItem a) {
     final fmt = DateFormat('dd MMM yyyy, HH:mm', 'ru_RU');
     final isLast = a.attemptNumber == _history.length;
-    final color = isLast ? theme.primaryColor : Colors.grey.shade500;
+    final studentColor = isLast ? theme.primaryColor : Colors.grey.shade500;
+    final hasTeacherComment = a.teacherComment.isNotEmpty;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -573,12 +594,12 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
           Column(
             children: [
               Container(
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: color.withValues(alpha: isLast ? 0.15 : 0.08),
-                  border: Border.all(color: color.withValues(alpha: 0.4)),
+                  color: studentColor.withValues(alpha: isLast ? 0.15 : 0.08),
+                  border: Border.all(color: studentColor.withValues(alpha: 0.4)),
                 ),
                 child: Center(
                   child: Text(
@@ -586,7 +607,7 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: color,
+                      color: studentColor,
                     ),
                   ),
                 ),
@@ -594,97 +615,153 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
               if (a.attemptNumber < _history.length)
                 Container(
                   width: 2,
-                  height: 40,
+                  height: hasTeacherComment ? 90 : 50,
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   color: Colors.grey.withValues(alpha: 0.2),
                 ),
             ],
           ),
           const SizedBox(width: 12),
-          // Content
+          // Content column
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isLast
-                    ? theme.primaryColor.withValues(alpha: 0.06)
-                    : theme.cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isLast
-                      ? theme.primaryColor.withValues(alpha: 0.25)
-                      : Colors.grey.withValues(alpha: 0.15),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Student submission card
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isLast
+                        ? theme.primaryColor.withValues(alpha: 0.06)
+                        : theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isLast
+                          ? theme.primaryColor.withValues(alpha: 0.25)
+                          : Colors.grey.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.schedule, size: 13, color: Colors.grey.shade500),
-                      const SizedBox(width: 4),
-                      Text(
-                        fmt.format(a.submittedAt.toLocal()),
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                      ),
-                      if (isLast) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.primaryColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'Последняя',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: theme.primaryColor,
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 13, color: Colors.grey.shade500),
+                          const SizedBox(width: 4),
+                          Text('Отправлено ', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                          Icon(Icons.schedule, size: 13, color: Colors.grey.shade500),
+                          const SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              fmt.format(a.submittedAt.toLocal()),
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                              overflow: TextOverflow.ellipsis,
                             ),
+                          ),
+                          if (isLast)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: theme.primaryColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Текущая',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.primaryColor,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (a.textAnswer.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          a.textAnswer,
+                          style: const TextStyle(height: 1.4, fontSize: 13),
+                        ),
+                      ],
+                      if (a.fileUrl.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () async {
+                            final uri = Uri.tryParse(a.fileUrl);
+                            if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          },
+                          child: Row(
+                            children: [
+                              Icon(Icons.link_outlined, size: 13, color: theme.primaryColor),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  a.fileUrl,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: theme.primaryColor,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ],
                   ),
-                  if (a.textAnswer.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      a.textAnswer,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(height: 1.4, fontSize: 13),
-                    ),
-                  ],
-                  if (a.fileUrl.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () async {
-                        final uri = Uri.tryParse(a.fileUrl);
-                        if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      },
-                      child: Row(
-                        children: [
-                          Icon(Icons.link_outlined, size: 13, color: theme.primaryColor),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              a.fileUrl,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: theme.primaryColor,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
+                ),
+
+                // Teacher comment card (if exists)
+                if (hasTeacherComment) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                           ),
-                        ],
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.rate_review_outlined, size: 13, color: Colors.orange.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Комментарий преподавателя',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                a.teacherComment,
+                                style: const TextStyle(fontSize: 13, height: 1.4),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ],
-              ),
+
+                if (a.attemptNumber < _history.length)
+                  const SizedBox(height: 4),
+              ],
             ),
           ),
         ],

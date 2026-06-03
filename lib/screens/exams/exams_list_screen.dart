@@ -22,6 +22,12 @@ class _ExamsListScreenState extends State<ExamsListScreen> {
   final ApiService _api = ApiService();
   bool _loading = true;
   List<StudentExam> _exams = [];
+  List<DashboardSubject> _subjects = [];
+  int? _selectedSubjectId;
+
+  List<StudentExam> get _filtered => _selectedSubjectId == null
+      ? _exams
+      : _exams.where((e) => e.subjectId == _selectedSubjectId).toList();
 
   @override
   void initState() {
@@ -30,34 +36,156 @@ class _ExamsListScreenState extends State<ExamsListScreen> {
   }
 
   Future<void> _load() async {
-    final data = await _api.getMyExams();
+    final results = await Future.wait([
+      _api.getMyExams(),
+      _api.getStudentDashboard(),
+    ]);
     if (!mounted) return;
+    final exams = results[0] as List<StudentExam>;
+    final dashboard = results[1] as StudentDashboardResponse?;
+
+    // Primary: subjects from student's group (dashboard)
+    List<DashboardSubject> subjects = dashboard?.subjects ?? [];
+
+    // Fallback: derive unique subjects from the loaded exams
+    if (subjects.isEmpty) {
+      final seen = <int>{};
+      subjects = exams
+          .where((e) => e.subjectId != null && e.subjectName != null)
+          .where((e) => seen.add(e.subjectId!))
+          .map((e) => DashboardSubject(
+                id: e.subjectId!,
+                name: e.subjectName!,
+                description: '',
+                teachers: [],
+              ))
+          .toList();
+    }
+
     setState(() {
-      _exams = data;
+      _exams = exams;
+      _subjects = subjects;
       _loading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (_loading) return const Center(child: CircularProgressIndicator());
+
+    final filtered = _filtered;
+
     return RefreshIndicator(
       onRefresh: _load,
-      child: _exams.isEmpty
-          ? const Center(child: Text('Экзамены не назначены'))
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-              itemCount: _exams.length,
-              itemBuilder: (ctx, i) => _ExamCard(
-                exam: _exams[i],
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ExamDetailScreen(exam: _exams[i]),
+      child: Column(
+        children: [
+          // ── Subject filter chips ──
+          if (_subjects.isNotEmpty)
+            SizedBox(
+              height: 48,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                children: [
+                  _SubjectChip(
+                    label: 'Все',
+                    selected: _selectedSubjectId == null,
+                    onTap: () => setState(() => _selectedSubjectId = null),
+                    theme: theme,
                   ),
-                ).then((_) => _load()),
+                  ..._subjects.map((s) => _SubjectChip(
+                    label: s.name,
+                    selected: _selectedSubjectId == s.id,
+                    onTap: () => setState(() => _selectedSubjectId = s.id),
+                    theme: theme,
+                  )),
+                ],
               ),
             ),
+
+          // ── Exam list ──
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.fact_check_outlined, size: 56,
+                            color: Colors.grey.shade300),
+                        const SizedBox(height: 12),
+                        Text(
+                          _selectedSubjectId != null
+                              ? 'Нет экзаменов по этому предмету'
+                              : 'Экзамены не назначены',
+                          style: TextStyle(color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                    itemCount: filtered.length,
+                    itemBuilder: (ctx, i) => _ExamCard(
+                      exam: filtered[i],
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ExamDetailScreen(exam: filtered[i]),
+                        ),
+                      ).then((_) => _load()),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubjectChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final ThemeData theme;
+
+  const _SubjectChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected
+                ? theme.primaryColor
+                : theme.primaryColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? theme.primaryColor
+                  : theme.primaryColor.withValues(alpha: 0.25),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.black : theme.primaryColor,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -147,6 +275,23 @@ class _ExamCard extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+                      if (exam.subjectName != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.menu_book_outlined, size: 12, color: Colors.grey.shade500),
+                            const SizedBox(width: 4),
+                            Text(
+                              exam.subjectName!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 6),
                       if (_isPractice)
                         Row(
@@ -246,53 +391,58 @@ class ExamDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (exam.type == 'PRACTICE') return _PracticeExamScreen(exam: exam);
     return Scaffold(
       appBar: AppBar(title: Text(exam.title)),
-      body: exam.type == 'PRACTICE'
-          ? _PracticeExamBody(exam: exam)
-          : _QuestionExamBody(exam: exam),
+      body: _QuestionExamBody(exam: exam),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Practice exam
+// Practice exam (full screen with tabs)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PracticeExamBody extends StatefulWidget {
+class _PracticeExamScreen extends StatefulWidget {
   final StudentExam exam;
-  const _PracticeExamBody({required this.exam});
+  const _PracticeExamScreen({required this.exam});
 
   @override
-  State<_PracticeExamBody> createState() => _PracticeExamBodyState();
+  State<_PracticeExamScreen> createState() => _PracticeExamScreenState();
 }
 
-class _PracticeExamBodyState extends State<_PracticeExamBody> {
+class _PracticeExamScreenState extends State<_PracticeExamScreen>
+    with SingleTickerProviderStateMixin {
   final ApiService _api = ApiService();
+  late TabController _tabController;
   bool _loading = true;
   List<ExamPracticeOption> _options = [];
   MyExamParticipation? _participation;
+  List<PracticeSubmissionAttemptItem> _history = [];
+  bool _historyLoading = false;
   final _submissionCtrl = TextEditingController();
 
   StudentExam get exam => widget.exam;
   bool get _isGraded => _participation?.submission?.status == 'GRADED';
 
-  bool _isLeader(BuildContext context) {
-    final myId = Provider.of<AuthProvider>(context, listen: false).profile?.userId;
-    if (myId == null || _participation == null) return false;
-    return _participation!.members.any((m) => m.user.id == myId && m.isLeader);
-  }
-
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _load();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _submissionCtrl.dispose();
     super.dispose();
+  }
+
+  bool _isLeader(BuildContext context) {
+    final myId = Provider.of<AuthProvider>(context, listen: false).profile?.userId;
+    if (myId == null || _participation == null) return false;
+    return _participation!.members.any((m) => m.user.id == myId && m.isLeader);
   }
 
   Future<void> _load() async {
@@ -307,6 +457,17 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
       _participation = results[1] as MyExamParticipation?;
       _loading = false;
     });
+    // Load history if submission exists
+    final submissionId = _participation?.submission?.id;
+    if (submissionId != null) {
+      setState(() => _historyLoading = true);
+      try {
+        final h = await _api.getSubmissionHistory(submissionId);
+        if (mounted) setState(() { _history = h; _historyLoading = false; });
+      } catch (_) {
+        if (mounted) setState(() => _historyLoading = false);
+      }
+    }
   }
 
   Future<void> _selectPractice(int examPracticeId) async {
@@ -419,7 +580,53 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(exam.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            const Tab(text: 'Экзамен'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('История сдач'),
+                  if (_history.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: theme.primaryColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_history.length}',
+                        style: const TextStyle(
+                          fontSize: 10, color: Colors.black, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildExamTab(),
+                _buildHistoryTab(theme),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildExamTab() {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -431,14 +638,152 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
             _InfoBanner(
               icon: Icons.lock_outline,
               color: Colors.orange,
-              text:
-                  'Экзамен пока недоступен. Статус: ${_statusLabel(exam.status)}',
+              text: 'Экзамен пока недоступен. Статус: ${_statusLabel(exam.status)}',
             )
           else if (_participation == null)
             _buildSelectionSection()
           else
             _buildParticipationSection(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryTab(ThemeData theme) {
+    if (_historyLoading) return const Center(child: CircularProgressIndicator());
+    if (_participation == null) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.history_rounded, size: 56, color: Colors.grey.shade300),
+          const SizedBox(height: 12),
+          Text('Вы ещё не выбрали практику',
+              style: TextStyle(color: Colors.grey.shade500)),
+        ]),
+      );
+    }
+    if (_history.isEmpty) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.upload_file_outlined, size: 56, color: Colors.grey.shade300),
+          const SizedBox(height: 12),
+          Text('Вы ещё не сдавали работу',
+              style: TextStyle(color: Colors.grey.shade500)),
+        ]),
+      );
+    }
+    final fmt = DateFormat('dd MMM yyyy, HH:mm', 'ru_RU');
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _history.length,
+        itemBuilder: (_, i) {
+          final a = _history[i];
+          final isLast = a.attemptNumber == _history.length;
+          final color = isLast ? theme.primaryColor : Colors.grey.shade500;
+          final hasComment = a.teacherComment.isNotEmpty;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => _AttemptDetailPage(attempt: a, total: _history.length),
+                ),
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: isLast
+                      ? theme.primaryColor.withValues(alpha: 0.06)
+                      : theme.cardColor,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isLast
+                        ? theme.primaryColor.withValues(alpha: 0.3)
+                        : Colors.grey.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Attempt number circle
+                    Container(
+                      width: 36, height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color.withValues(alpha: 0.12),
+                        border: Border.all(color: color.withValues(alpha: 0.4)),
+                      ),
+                      child: Center(
+                        child: Text('${a.attemptNumber}',
+                            style: TextStyle(fontSize: 13,
+                                fontWeight: FontWeight.bold, color: color)),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    // Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                isLast ? 'Текущая попытка' : 'Попытка ${a.attemptNumber}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13.5,
+                                  color: isLast ? theme.primaryColor : null,
+                                ),
+                              ),
+                              if (hasComment) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text('Есть отзыв',
+                                      style: TextStyle(fontSize: 10,
+                                          color: Colors.orange.shade700,
+                                          fontWeight: FontWeight.w600)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Icon(Icons.schedule, size: 12, color: Colors.grey.shade500),
+                              const SizedBox(width: 4),
+                              Text(fmt.format(a.submittedAt.toLocal()),
+                                  style: TextStyle(fontSize: 12,
+                                      color: Colors.grey.shade500)),
+                            ],
+                          ),
+                          if (a.textAnswer.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              a.textAnswer,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -703,6 +1048,215 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
         ],
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Attempt detail page
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AttemptDetailPage extends StatelessWidget {
+  final PracticeSubmissionAttemptItem attempt;
+  final int total;
+
+  const _AttemptDetailPage({required this.attempt, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final fmt = DateFormat('dd MMM yyyy, HH:mm', 'ru_RU');
+    final isLast = attempt.attemptNumber == total;
+    final hasComment = attempt.teacherComment.isNotEmpty;
+    final hasFile = attempt.fileUrl.isNotEmpty;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Попытка ${attempt.attemptNumber} из $total'),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header badge ────────────────────────────────────────────────
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isLast
+                        ? theme.primaryColor.withValues(alpha: 0.12)
+                        : Colors.grey.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: isLast
+                          ? theme.primaryColor.withValues(alpha: 0.4)
+                          : Colors.grey.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isLast ? Icons.upload_file_outlined : Icons.history_rounded,
+                        size: 14,
+                        color: isLast ? theme.primaryColor : Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isLast ? 'Последняя попытка' : 'Попытка ${attempt.attemptNumber}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isLast ? theme.primaryColor : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Icon(Icons.schedule, size: 13, color: Colors.grey.shade500),
+                    const SizedBox(width: 4),
+                    Text(
+                      fmt.format(attempt.submittedAt.toLocal()),
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── Student work ─────────────────────────────────────────────────
+            Row(
+              children: [
+                Icon(Icons.person_outline, size: 16, color: theme.primaryColor),
+                const SizedBox(width: 6),
+                Text(
+                  'Работа студента',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: theme.primaryColor,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (attempt.textAnswer.isNotEmpty) ...[
+                    Text(
+                      attempt.textAnswer,
+                      style: const TextStyle(fontSize: 14.5, height: 1.55),
+                    ),
+                    if (hasFile) const SizedBox(height: 12),
+                  ],
+                  if (attempt.textAnswer.isEmpty && !hasFile)
+                    Text(
+                      'Текстовый ответ не предоставлен.',
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                    ),
+                  if (hasFile) ...[
+                    InkWell(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Ссылка: ${attempt.fileUrl}'),
+                            duration: const Duration(seconds: 4),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: theme.primaryColor.withValues(alpha: 0.07),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: theme.primaryColor.withValues(alpha: 0.25)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.attach_file_rounded,
+                                size: 16, color: theme.primaryColor),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                attempt.fileUrl.split('/').last,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: theme.primaryColor,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // ── Teacher comment ──────────────────────────────────────────────
+            if (hasComment) ...[
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Icon(Icons.rate_review_outlined, size: 16,
+                      color: Colors.orange.shade700),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Отзыв преподавателя',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.orange.shade700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  attempt.teacherComment,
+                  style: const TextStyle(fontSize: 14.5, height: 1.55),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
     );
   }
 }

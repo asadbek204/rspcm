@@ -605,38 +605,42 @@ class _PracticeExamBodyState extends State<_PracticeExamBody> {
                 ),
                 const SizedBox(height: 8),
               ],
-              // Кнопки для всех участников
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _leaveTeam,
-                      icon: const Icon(Icons.exit_to_app_outlined, size: 18),
-                      label: const Text('Покинуть'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.orange.shade700,
-                        side: BorderSide(color: Colors.orange.shade300),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+              // Покинуть — только для TEAM участников (не лидера)
+              if (p.practice.workMode == 'TEAM' && !isLeader) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _leaveTeam,
+                    icon: const Icon(Icons.exit_to_app_outlined, size: 18),
+                    label: const Text('Покинуть команду'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange.shade700,
+                      side: BorderSide(color: Colors.orange.shade300),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _cancelParticipation,
-                      icon: const Icon(Icons.cancel_outlined, size: 18),
-                      label: const Text('Отменить'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red.shade700,
-                        side: BorderSide(color: Colors.red.shade300),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              // Отменить участие — только если ещё нет submission
+              if (p.submission == null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _cancelParticipation,
+                    icon: const Icon(Icons.cancel_outlined, size: 18),
+                    label: const Text('Отменить участие'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red.shade700,
+                      side: BorderSide(color: Colors.red.shade300),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 8),
+              ],
             ],
           );
         }),

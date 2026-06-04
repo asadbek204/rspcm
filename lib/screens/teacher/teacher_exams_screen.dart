@@ -497,7 +497,7 @@ class _ExamFormScreenState extends State<_ExamFormScreen> {
       'startAt': _startAt!.toIso8601String(),
       'endAt': _endAt!.toIso8601String(),
       'maxScore': int.tryParse(_maxScore.text.trim()) ?? 100,
-      'taskLimit': int.tryParse(_taskLimit.text.trim()) ?? 60,
+      'taskLimit': _type == 'QUESTION' ? (int.tryParse(_taskLimit.text.trim()) ?? 60) : 0,
       'type': _type,
       'groupIds': _selectedGroupIds.toList(),
       'studentIds': <int>[],
@@ -724,6 +724,7 @@ class _ExamFormScreenState extends State<_ExamFormScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
+                if (_type == 'QUESTION')
                 Expanded(
                   child: TextFormField(
                     controller: _taskLimit,

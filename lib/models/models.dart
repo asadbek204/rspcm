@@ -1125,3 +1125,98 @@ class TeacherAttemptAnswer {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin Dashboard Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+class AdminDashboardStats {
+  final int totalStudents;
+  final int totalStudyGroups;
+  final int pendingReports;
+  final int approvedReports;
+  final int totalGroups;
+
+  AdminDashboardStats({
+    required this.totalStudents,
+    required this.totalStudyGroups,
+    required this.pendingReports,
+    required this.approvedReports,
+    required this.totalGroups,
+  });
+
+  factory AdminDashboardStats.fromJson(Map<String, dynamic> json) {
+    return AdminDashboardStats(
+      totalStudents: (json['totalStudents'] as num?)?.toInt() ?? 0,
+      totalStudyGroups: (json['totalStudyGroups'] as num?)?.toInt() ?? 0,
+      pendingReports: (json['pendingReports'] as num?)?.toInt() ?? 0,
+      approvedReports: (json['approvedReports'] as num?)?.toInt() ?? 0,
+      totalGroups: (json['totalGroups'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class AdminRecentReport {
+  final int submissionId;
+  final int examId;
+  final String examTitle;
+  final List<String> groupNames;
+  final String studentName;
+  final String studentEmail;
+  final String status;
+  final DateTime submittedAt;
+
+  AdminRecentReport({
+    required this.submissionId,
+    required this.examId,
+    required this.examTitle,
+    required this.groupNames,
+    required this.studentName,
+    required this.studentEmail,
+    required this.status,
+    required this.submittedAt,
+  });
+
+  factory AdminRecentReport.fromJson(Map<String, dynamic> json) {
+    final submittedBy = json['submittedBy'] as Map<String, dynamic>? ?? {};
+    return AdminRecentReport(
+      submissionId: (json['submissionId'] as num?)?.toInt() ?? 0,
+      examId: (json['examId'] as num?)?.toInt() ?? 0,
+      examTitle: json['examTitle'] ?? '',
+      groupNames: (json['groupNames'] as List? ?? []).map((e) => e.toString()).toList(),
+      studentName: '${submittedBy['firstName'] ?? ''} ${submittedBy['lastName'] ?? ''}'.trim(),
+      studentEmail: submittedBy['email'] ?? '',
+      status: json['status'] ?? '',
+      submittedAt: DateTime.tryParse(json['submittedAt'] ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+class AdminGroup {
+  final int id;
+  final String name;
+  final String description;
+  final String language;
+  final int studentCount;
+  final int teacherCount;
+
+  AdminGroup({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.language,
+    required this.studentCount,
+    required this.teacherCount,
+  });
+
+  factory AdminGroup.fromJson(Map<String, dynamic> json) {
+    return AdminGroup(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      language: json['language'] ?? '',
+      studentCount: (json['students'] as List?)?.length ?? 0,
+      teacherCount: (json['teachers'] as List?)?.length ?? 0,
+    );
+  }
+}

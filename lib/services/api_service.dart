@@ -972,4 +972,40 @@ class ApiService {
       return false;
     }
   }
+
+  // ── Admin Dashboard ─────────────────────────────────────────────────────────
+
+  Future<AdminDashboardStats?> getAdminDashboardStats() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.adminDashboardStats);
+      return AdminDashboardStats.fromJson(json.decode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      print('API Error (AdminStats): $e');
+      return null;
+    }
+  }
+
+  Future<List<AdminRecentReport>> getAdminRecentReports({int size = 10}) async {
+    try {
+      final response = await _apiClient.get(
+          '${ApiEndpoints.adminDashboardRecentReports}?page=0&size=$size&sort=submittedAt,desc');
+      final body = json.decode(response.body) as Map<String, dynamic>;
+      final content = body['content'] as List? ?? [];
+      return content.map((e) => AdminRecentReport.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (AdminReports): $e');
+      return [];
+    }
+  }
+
+  Future<List<AdminGroup>> getAdminGroups() async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.adminDashboardGroups);
+      final list = json.decode(response.body) as List? ?? [];
+      return list.map((e) => AdminGroup.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('API Error (AdminGroups): $e');
+      return [];
+    }
+  }
 }

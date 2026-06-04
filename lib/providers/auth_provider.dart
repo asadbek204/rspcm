@@ -18,6 +18,7 @@ class AuthProvider with ChangeNotifier {
   String get role => _role;
   bool get isTeacher => _role == 'TEACHER';
   bool get isStudent => _role == 'STUDENT';
+  bool get isAdmin => _role == 'ADMIN';
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
 
@@ -57,7 +58,7 @@ class AuthProvider with ChangeNotifier {
     try {
       if (_isAuthenticated) {
         await _fetchProfile();
-        if (_studentProfile == null && _teacherProfile == null) {
+        if (_role != 'ADMIN' && _studentProfile == null && _teacherProfile == null) {
           await logout();
           return;
         }
@@ -72,6 +73,8 @@ class AuthProvider with ChangeNotifier {
   Future<void> _fetchProfile() async {
     if (_role == 'TEACHER') {
       _teacherProfile = await _apiService.getTeacherProfile();
+    } else if (_role == 'ADMIN') {
+      // Admin profile not fetched separately — name comes from token/prefs
     } else {
       _studentProfile = await _apiService.getMyProfile();
     }
@@ -122,7 +125,9 @@ class AuthProvider with ChangeNotifier {
 
       // Determine role from response
       final roles = response.roles;
-      if (roles.any((r) => r.toUpperCase().contains('TEACHER'))) {
+      if (roles.any((r) => r.toUpperCase().contains('ADMIN'))) {
+        _role = 'ADMIN';
+      } else if (roles.any((r) => r.toUpperCase().contains('TEACHER'))) {
         _role = 'TEACHER';
       } else {
         _role = 'STUDENT';

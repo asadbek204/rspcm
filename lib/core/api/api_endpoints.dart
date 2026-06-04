@@ -97,4 +97,9 @@ class ApiEndpoints {
 
   // Teacher — question bank  (GET /questions?own=true, POST /questions, PUT /questions/{id}, DELETE /questions/{id})
   static const String teacherQuestions = '/questions';
+
+  // Admin Dashboard
+  static const String adminDashboardStats = '/admin-dashboard/general-stats';
+  static const String adminDashboardRecentReports = '/admin-dashboard/recent-reports';
+  static const String adminDashboardGroups = '/admin-dashboard/groups';
 }

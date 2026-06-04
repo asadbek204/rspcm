@@ -1,6 +1,6 @@
 class ApiEndpoints {
   // Real device (phone) must use your computer LAN IP, not localhost.
-  static const String baseUrl = 'http://68.183.79.219/api';
+  static const String baseUrl = 'https://api.rspcm.uz/api';
 
   // Auth
   static const String login = '/auth/login';

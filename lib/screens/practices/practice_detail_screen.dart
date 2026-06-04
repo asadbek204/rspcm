@@ -92,7 +92,7 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
         _submission = results[idx] as PracticeSubmission?;
         if (_submission != null) {
           _submissionController.text = _submission!.textAnswer;
-          _resourceUrlController.text = _submission!.fileUrl ?? '';
+          _resourceUrlController.text = _submission!.fileUrl;
         }
       }
       _loading = false;
@@ -259,47 +259,29 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
               _buildTeamSection(theme),
             ],
 
-            // ── Divider before submission form ──
+            // ── Submission section ──
             const SizedBox(height: 28),
             Divider(color: Colors.grey.withValues(alpha: 0.2), height: 1),
             const SizedBox(height: 24),
 
-            // ── Status banner ──
-            if (_submission != null) ...[
-              _buildSubmissionStatusBanner(theme, _submission!),
-              const SizedBox(height: 20),
-            ],
-
-            if (!canSubmit) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.lock_outline, color: Colors.grey.shade400, size: 22),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Сдача доступна после выбора практики в экзамене.',
-                        style: TextStyle(color: Colors.grey.shade600, height: 1.4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              // ── Submit form ──
+            if (!canSubmit)
+              _buildLockedCard(theme)
+            else if (isGraded)
+              _buildGradedResultCard(theme, _submission!)
+            else if (isSubmitted)
+              _buildOnReviewCard(theme, _submission!)
+            else ...[
+              // ── Editable form (no submission yet, or RETURNED) ──
+              if (isReturned) ...[
+                _buildReturnedBanner(theme, _submission!),
+                const SizedBox(height: 20),
+              ],
               Text('Текст работы',
                   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               TextField(
                 controller: _submissionController,
                 maxLines: 8,
-                enabled: !isGraded && !isSubmitted,
                 decoration: InputDecoration(
                   hintText: 'Опишите выполненную работу...',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
@@ -325,7 +307,6 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
               const SizedBox(height: 10),
               TextField(
                 controller: _resourceUrlController,
-                enabled: !isGraded && !isSubmitted,
                 keyboardType: TextInputType.url,
                 autocorrect: false,
                 decoration: InputDecoration(
@@ -346,49 +327,360 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              if (!isGraded && !isSubmitted)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _submitting ? null : _submitWork,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: _submitting
-                        ? const SizedBox(
-                            width: 20, height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(
-                            isReturned ? 'Отправить повторно' : 'Отправить работу',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submitting ? null : _submitWork,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text(
+                          isReturned ? 'Отправить повторно' : 'Отправить работу',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
                 ),
-              if (isGraded)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.green),
-                      SizedBox(width: 12),
-                      Text('Работа проверена. Редактирование недоступно.',
-                          style: TextStyle(fontWeight: FontWeight.w500)),
-                    ],
-                  ),
-                ),
+              ),
             ],
           ],
         ),
       ),
     );
   }
+
+  // ─── Submission state cards ────────────────────────────────────────────────
+
+  Widget _buildLockedCard(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lock_outline, color: Colors.grey.shade400, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Сдача доступна после выбора практики в экзамене.',
+              style: TextStyle(color: Colors.grey.shade600, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGradedResultCard(ThemeData theme, PracticeSubmission submission) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Result header ──
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.green.withValues(alpha: 0.35)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 36),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Работа принята',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Преподаватель проверил вашу работу',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Teacher comment ──
+        if (submission.teacherComment.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.rate_review_outlined, size: 16, color: theme.primaryColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Комментарий преподавателя',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: theme.primaryColor,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(submission.teacherComment, style: const TextStyle(height: 1.5, fontSize: 14)),
+              ],
+            ),
+          ),
+        ],
+
+        // ── Submitted content ──
+        if (submission.textAnswer.isNotEmpty || submission.fileUrl.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.assignment_turned_in_outlined, size: 16, color: Colors.grey.shade500),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Ваша сданная работа',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                if (submission.textAnswer.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(submission.textAnswer,
+                      style: TextStyle(height: 1.5, color: Colors.grey.shade700)),
+                ],
+                if (submission.fileUrl.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () async {
+                      final uri = Uri.tryParse(submission.fileUrl);
+                      if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    },
+                    child: Row(
+                      children: [
+                        Icon(Icons.link_outlined, size: 14, color: theme.primaryColor),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            submission.fileUrl,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: theme.primaryColor,
+                              decoration: TextDecoration.underline,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+
+        if (submission.attemptCount > 1) ...[
+          const SizedBox(height: 12),
+          Center(
+            child: Text(
+              'Попыток сдачи: ${submission.attemptCount}',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildOnReviewCard(ThemeData theme, PracticeSubmission submission) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.hourglass_top_rounded, color: Colors.blue.shade600, size: 36),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Работа отправлена',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Ожидайте проверки преподавателем',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Submitted content preview ──
+        if (submission.textAnswer.isNotEmpty || submission.fileUrl.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.description_outlined, size: 16, color: Colors.grey.shade500),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Отправленная работа',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                if (submission.textAnswer.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(submission.textAnswer,
+                      style: TextStyle(height: 1.5, color: Colors.grey.shade700)),
+                ],
+                if (submission.fileUrl.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () async {
+                      final uri = Uri.tryParse(submission.fileUrl);
+                      if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    },
+                    child: Row(
+                      children: [
+                        Icon(Icons.link_outlined, size: 14, color: theme.primaryColor),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            submission.fileUrl,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: theme.primaryColor,
+                              decoration: TextDecoration.underline,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReturnedBanner(ThemeData theme, PracticeSubmission submission) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.reply_rounded, color: Colors.orange.shade700, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                'Работа возвращена на доработку',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade700,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          if (submission.teacherComment.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Комментарий:',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 4),
+            Text(submission.teacherComment,
+                style: const TextStyle(height: 1.4, fontSize: 14)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
 
   Widget _buildMetaCard(ThemeData theme) {
     final daysLeft = widget.practice.deadline.difference(DateTime.now()).inDays;
@@ -769,93 +1061,6 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
     );
   }
 
-  Widget _buildSubmissionStatusBanner(ThemeData theme, PracticeSubmission submission) {
-    Color bg;
-    Color fg;
-    IconData icon;
-    String label;
-
-    switch (submission.status) {
-      case 'SUBMITTED':
-        bg = Colors.blue.withValues(alpha: 0.08);
-        fg = Colors.blue.shade700;
-        icon = Icons.hourglass_top_outlined;
-        label = 'На проверке';
-        break;
-      case 'GRADED':
-        bg = Colors.green.withValues(alpha: 0.08);
-        fg = Colors.green.shade700;
-        icon = Icons.check_circle_outline;
-        label = 'Проверено';
-        break;
-      case 'RETURNED':
-        bg = Colors.orange.withValues(alpha: 0.08);
-        fg = Colors.orange.shade700;
-        icon = Icons.reply_outlined;
-        label = 'Возвращено на доработку';
-        break;
-      default:
-        return const SizedBox.shrink();
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: fg.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: fg, size: 20),
-              const SizedBox(width: 10),
-              Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          if (submission.teacherComment.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text('Комментарий преподавателя:',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(submission.teacherComment, style: const TextStyle(height: 1.4)),
-          ],
-          if (submission.fileUrl.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text('Прикреплённый ресурс:',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-            const SizedBox(height: 4),
-            GestureDetector(
-              onTap: () async {
-                final uri = Uri.tryParse(submission.fileUrl);
-                if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
-              },
-              child: Row(
-                children: [
-                  Icon(Icons.link_outlined, size: 14, color: fg),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      submission.fileUrl,
-                      style: TextStyle(
-                        color: fg,
-                        decoration: TextDecoration.underline,
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   // ─── Tab 3: Journal / Logbook ─────────────────────────────────────────────
 

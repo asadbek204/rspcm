@@ -5,7 +5,6 @@ import '../models/models.dart';
 import '../screens/chat/chats_list_screen.dart';
 import '../screens/chat/groups_list_screen.dart';
 import '../screens/subjects/subjects_list_screen.dart';
-import '../screens/practices/practices_list_screen.dart';
 
 class AppDrawer extends StatefulWidget {
   final Function(int) onTabSelected;
@@ -40,15 +39,6 @@ class _AppDrawerState extends State<AppDrawer> {
                   icon: Icons.chat_bubble_outline,
                   title: 'Чаты',
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatsListScreen())),
-                ),
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.assignment_outlined,
-                  title: 'Практики',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PracticesListScreen()),
-                  ),
                 ),
                 _buildDrawerItem(
                   context,

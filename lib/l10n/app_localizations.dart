@@ -191,6 +191,12 @@ abstract class AppLocalizations {
   String get profilePasswordSection;
   String get profilePasswordHint;
   String get profileSelectDate;
+  String get profileChangePassword;
+  String get profileChangePasswordTitle;
+  String get profileConfirmNewPassword;
+  String get profilePasswordSuccess;
+  String get profilePasswordError;
+  String get profilePasswordMismatch;
 
   // ── Exams list ─────────────────────────────────────────────────────────────
   String get examsEmpty;
@@ -534,6 +540,12 @@ class _RuAppLocalizations extends AppLocalizations {
   @override String get profilePasswordSection => 'Изменить пароль';
   @override String get profilePasswordHint => 'Оставьте пустым, чтобы не менять';
   @override String get profileSelectDate => 'Выбрать дату';
+  @override String get profileChangePassword => 'Изменить пароль';
+  @override String get profileChangePasswordTitle => 'Изменить пароль';
+  @override String get profileConfirmNewPassword => 'Подтвердите новый пароль';
+  @override String get profilePasswordSuccess => 'Пароль успешно изменён';
+  @override String get profilePasswordError => 'Не удалось изменить пароль';
+  @override String get profilePasswordMismatch => 'Пароли не совпадают';
 
   @override String get examsEmpty => 'Экзамены не назначены';
   @override String get examTypePractice => 'Практический экзамен';
@@ -872,6 +884,12 @@ class _UzAppLocalizations extends AppLocalizations {
   @override String get profilePasswordSection => 'Parolni o\'zgartirish';
   @override String get profilePasswordHint => 'O\'zgartirmaslik uchun bo\'sh qoldiring';
   @override String get profileSelectDate => 'Sanani tanlash';
+  @override String get profileChangePassword => 'Parolni o\'zgartirish';
+  @override String get profileChangePasswordTitle => 'Parolni o\'zgartirish';
+  @override String get profileConfirmNewPassword => 'Yangi parolni tasdiqlang';
+  @override String get profilePasswordSuccess => 'Parol muvaffaqiyatli o\'zgartirildi';
+  @override String get profilePasswordError => 'Parolni o\'zgartirib bo\'lmadi';
+  @override String get profilePasswordMismatch => 'Parollar mos kelmaydi';
 
   @override String get examsEmpty => 'Imtihonlar tayinlanmagan';
   @override String get examTypePractice => 'Amaliy imtihon';

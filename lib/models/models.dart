@@ -515,6 +515,7 @@ class PracticeSubmission {
   final String fileUrl;
   final String status;
   final String teacherComment;
+  final int? score;
   final int attemptCount;
 
   PracticeSubmission({
@@ -524,6 +525,7 @@ class PracticeSubmission {
     required this.fileUrl,
     required this.status,
     required this.teacherComment,
+    this.score,
     this.attemptCount = 0,
   });
 
@@ -535,6 +537,7 @@ class PracticeSubmission {
       fileUrl: json['fileUrl'] ?? '',
       status: json['status'] ?? '',
       teacherComment: json['teacherComment'] ?? '',
+      score: json['score'] as int?,
       attemptCount: json['attemptCount'] ?? 0,
     );
   }

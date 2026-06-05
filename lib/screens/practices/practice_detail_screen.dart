@@ -418,6 +418,31 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
                 'Преподаватель проверил вашу работу',
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
+              if (submission.score != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star_rounded, color: Colors.green, size: 20),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Оценка: ${submission.score} / 100',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),

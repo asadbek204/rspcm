@@ -1,18 +1,17 @@
+class TeacherSummary {
+  final int id;
+  final String firstName;
+  final String lastName;
+  final String email;
 
-class User {
-  final String id;
-  final String name;
-  final String studentId;
-  final String avatarUrl;
+  TeacherSummary({required this.id, required this.firstName, required this.lastName, required this.email});
 
-  User({required this.id, required this.name, required this.studentId, required this.avatarUrl});
-
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id']?.toString() ?? '',
-      name: '${json['firstName'] ?? ''} ${json['lastName'] ?? ''}'.trim(),
-      studentId: json['studentNumber'] ?? '',
-      avatarUrl: '', // Backend doesn't seem to provide this yet
+  factory TeacherSummary.fromJson(Map<String, dynamic> json) {
+    return TeacherSummary(
+      id: json['id'] ?? 0,
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      email: json['email'] ?? '',
     );
   }
 }
@@ -81,6 +80,7 @@ class StudentProfileResponse {
   final String studentNumber;
   final String phoneNumber;
   final String notes;
+  final DateTime? birthDate;
 
   StudentProfileResponse({
     required this.id,
@@ -92,6 +92,7 @@ class StudentProfileResponse {
     required this.studentNumber,
     required this.phoneNumber,
     required this.notes,
+    this.birthDate,
   });
 
   factory StudentProfileResponse.fromJson(Map<String, dynamic> json) {
@@ -106,6 +107,7 @@ class StudentProfileResponse {
       studentNumber: json['studentNumber'] ?? userJson['universityId'] ?? '',
       phoneNumber: json['phoneNumber'] ?? userJson['phoneNumber'] ?? '',
       notes: json['notes'] ?? '',
+      birthDate: json['birthDate'] != null ? DateTime.tryParse(json['birthDate']) : null,
     );
   }
 }
@@ -168,24 +170,6 @@ class PracticeTeamResponse {
 }
 
 // Helper Summaries
-class TeacherSummary {
-  final int id;
-  final String firstName;
-  final String lastName;
-  final String email;
-
-  TeacherSummary({required this.id, required this.firstName, required this.lastName, required this.email});
-
-  factory TeacherSummary.fromJson(Map<String, dynamic> json) {
-    return TeacherSummary(
-      id: json['id'] ?? 0,
-      firstName: json['firstName'] ?? '',
-      lastName: json['lastName'] ?? '',
-      email: json['email'] ?? '',
-    );
-  }
-}
-
 class StudentSummary {
   final int id;
   final String firstName;
@@ -355,11 +339,7 @@ class ExamQuestionOptionItem {
   final String text;
   final int orderIndex;
 
-  ExamQuestionOptionItem({
-    required this.id,
-    required this.text,
-    required this.orderIndex,
-  });
+  ExamQuestionOptionItem({required this.id, required this.text, required this.orderIndex});
 
   factory ExamQuestionOptionItem.fromJson(Map<String, dynamic> json) {
     return ExamQuestionOptionItem(
@@ -634,6 +614,7 @@ class TeacherProfileModel {
   final String email;
   final String academicDegree;
   final List<SubjectSummaryModel> teachingSubjects;
+  final DateTime? birthDate;
 
   TeacherProfileModel({
     required this.id,
@@ -643,6 +624,7 @@ class TeacherProfileModel {
     required this.email,
     required this.academicDegree,
     required this.teachingSubjects,
+    this.birthDate,
   });
 
   factory TeacherProfileModel.fromJson(Map<String, dynamic> json) {
@@ -657,6 +639,7 @@ class TeacherProfileModel {
       teachingSubjects: (json['teachingSubjects'] as List? ?? [])
           .map((s) => SubjectSummaryModel.fromJson(s as Map<String, dynamic>))
           .toList(),
+      birthDate: json['birthDate'] != null ? DateTime.tryParse(json['birthDate']) : null,
     );
   }
 }
@@ -962,15 +945,10 @@ class NotificationItem {
 class ParticipationMember {
   final int id;
   final StudentSummary user;
-  final String role; // 'LEADER' or 'MEMBER'
+  final String role;
   final String status;
 
-  ParticipationMember({
-    required this.id,
-    required this.user,
-    required this.role,
-    required this.status,
-  });
+  ParticipationMember({required this.id, required this.user, required this.role, required this.status});
 
   bool get isLeader => role == 'LEADER';
 
@@ -1126,97 +1104,3 @@ class TeacherAttemptAnswer {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Admin Dashboard Models
-// ─────────────────────────────────────────────────────────────────────────────
-
-class AdminDashboardStats {
-  final int totalStudents;
-  final int totalStudyGroups;
-  final int pendingReports;
-  final int approvedReports;
-  final int totalGroups;
-
-  AdminDashboardStats({
-    required this.totalStudents,
-    required this.totalStudyGroups,
-    required this.pendingReports,
-    required this.approvedReports,
-    required this.totalGroups,
-  });
-
-  factory AdminDashboardStats.fromJson(Map<String, dynamic> json) {
-    return AdminDashboardStats(
-      totalStudents: (json['totalStudents'] as num?)?.toInt() ?? 0,
-      totalStudyGroups: (json['totalStudyGroups'] as num?)?.toInt() ?? 0,
-      pendingReports: (json['pendingReports'] as num?)?.toInt() ?? 0,
-      approvedReports: (json['approvedReports'] as num?)?.toInt() ?? 0,
-      totalGroups: (json['totalGroups'] as num?)?.toInt() ?? 0,
-    );
-  }
-}
-
-class AdminRecentReport {
-  final int submissionId;
-  final int examId;
-  final String examTitle;
-  final List<String> groupNames;
-  final String studentName;
-  final String studentEmail;
-  final String status;
-  final DateTime submittedAt;
-
-  AdminRecentReport({
-    required this.submissionId,
-    required this.examId,
-    required this.examTitle,
-    required this.groupNames,
-    required this.studentName,
-    required this.studentEmail,
-    required this.status,
-    required this.submittedAt,
-  });
-
-  factory AdminRecentReport.fromJson(Map<String, dynamic> json) {
-    final submittedBy = json['submittedBy'] as Map<String, dynamic>? ?? {};
-    return AdminRecentReport(
-      submissionId: (json['submissionId'] as num?)?.toInt() ?? 0,
-      examId: (json['examId'] as num?)?.toInt() ?? 0,
-      examTitle: json['examTitle'] ?? '',
-      groupNames: (json['groupNames'] as List? ?? []).map((e) => e.toString()).toList(),
-      studentName: '${submittedBy['firstName'] ?? ''} ${submittedBy['lastName'] ?? ''}'.trim(),
-      studentEmail: submittedBy['email'] ?? '',
-      status: json['status'] ?? '',
-      submittedAt: DateTime.tryParse(json['submittedAt'] ?? '') ?? DateTime.now(),
-    );
-  }
-}
-
-class AdminGroup {
-  final int id;
-  final String name;
-  final String description;
-  final String language;
-  final int studentCount;
-  final int teacherCount;
-
-  AdminGroup({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.language,
-    required this.studentCount,
-    required this.teacherCount,
-  });
-
-  factory AdminGroup.fromJson(Map<String, dynamic> json) {
-    return AdminGroup(
-      id: (json['id'] as num?)?.toInt() ?? 0,
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      language: json['language'] ?? '',
-      studentCount: (json['students'] as List?)?.length ?? 0,
-      teacherCount: (json['teachers'] as List?)?.length ?? 0,
-    );
-  }
-}

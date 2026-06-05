@@ -62,11 +62,25 @@ class ApiService {
     }
   }
 
-  Future<StudentProfileResponse?> updateMyProfile({int? course}) async {
+  Future<StudentProfileResponse?> updateMyProfile({
+    int? course,
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? newPassword,
+    String? currentPassword,
+    DateTime? birthDate,
+  }) async {
     try {
-      final response = await _apiClient.put(ApiEndpoints.myProfile, {
-        'course': course,
-      });
+      final body = <String, dynamic>{};
+      if (course != null) body['course'] = course;
+      if (firstName != null) body['firstName'] = firstName;
+      if (lastName != null) body['lastName'] = lastName;
+      if (email != null) body['email'] = email;
+      if (newPassword != null) body['newPassword'] = newPassword;
+      if (currentPassword != null) body['currentPassword'] = currentPassword;
+      if (birthDate != null) body['birthDate'] = birthDate.toIso8601String().split('T').first;
+      final response = await _apiClient.put(ApiEndpoints.myProfile, body);
       return StudentProfileResponse.fromJson(json.decode(response.body));
     } catch (e) {
       print('API Error (Update Profile): $e');
@@ -88,12 +102,41 @@ class ApiService {
     }
   }
 
-  Future<Practice?> getPracticeDetail(int id) async {
+
+  /// Returns (practice, participationId, team) for a student by practice ID.
+  /// Uses the student-accessible /practice-participations/me endpoint.
+  /// team is non-null only when workMode == TEAM.
+  Future<({Practice practice, int? participationId, PracticeTeamResponse? team})?> getMyParticipationByPracticeId(int practiceId) async {
     try {
-      final response = await _apiClient.get('${ApiEndpoints.practiceDetail}/$id');
-      return Practice.fromJson(json.decode(response.body));
+      final response = await _apiClient.get(ApiEndpoints.practiceParticipationsMe);
+      final List raw = json.decode(response.body);
+      for (final item in raw.cast<Map<String, dynamic>>()) {
+        final practiceJson = item['practice'] as Map<String, dynamic>?;
+        if (practiceJson == null) continue;
+        if ((practiceJson['id'] as int?) == practiceId) {
+          final practice = Practice.fromJson(practiceJson);
+          PracticeTeamResponse? team;
+          if (practice.workMode == 'TEAM') {
+            final members = (item['members'] as List? ?? [])
+                .cast<Map<String, dynamic>>()
+                .map((m) => (m['user'] ?? {}) as Map<String, dynamic>)
+                .toList();
+            team = PracticeTeamResponse.fromJson({
+              'id': item['participationId'] ?? 0,
+              'name': 'Team',
+              'members': members,
+            });
+          }
+          return (
+            practice: practice,
+            participationId: item['participationId'] as int?,
+            team: team,
+          );
+        }
+      }
+      return null;
     } catch (e) {
-      print('API Error (Practice Detail): $e');
+      print('API Error (getMyParticipationByPracticeId): $e');
       return null;
     }
   }
@@ -124,27 +167,6 @@ class ApiService {
     }
   }
 
-  Future<bool> createTeam(int practiceId, String name, List<int> memberIds) async {
-    try {
-      final response = await _apiClient.get(ApiEndpoints.practiceParticipationsMe);
-      final List data = json.decode(response.body);
-      final matched = data.cast<Map<String, dynamic>>().firstWhere(
-        (item) => ((item['practice'] ?? {})['id'] ?? 0) == practiceId,
-        orElse: () => <String, dynamic>{},
-      );
-      final participationId = matched['participationId'];
-      if (participationId == null) {
-        return false;
-      }
-      await _apiClient.post('${ApiEndpoints.practiceParticipationMembersInvite}/$participationId/members/invite', {
-        'studentIds': memberIds,
-      });
-      return true;
-    } catch (e) {
-      AppSnackbar.showError(e);
-      return false;
-    }
-  }
 
   Future<bool> inviteTeamMembersByParticipation(int participationId, List<int> memberIds) async {
     try {
@@ -411,55 +433,6 @@ class ApiService {
     }
   }
 
-  Future<bool> acceptTeamInvitation(int participationId) async {
-    try {
-      await _apiClient.post('/practice-participations/$participationId/members/accept', {});
-      return true;
-    } catch (e) {
-      AppSnackbar.showError(e);
-      return false;
-    }
-  }
-
-  Future<bool> declineTeamInvitation(int participationId) async {
-    try {
-      await _apiClient.post('/practice-participations/$participationId/members/decline', {});
-      return true;
-    } catch (e) {
-      AppSnackbar.showError(e);
-      return false;
-    }
-  }
-
-  // Answers / Assignments
-  Future<List<Map<String, dynamic>>> getMyAnswers() async {
-    try {
-      final response = await _apiClient.get(ApiEndpoints.myAnswers);
-      return List<Map<String, dynamic>>.from(json.decode(response.body));
-    } catch (e) {
-      print('API Error (My Answers): $e');
-      return [];
-    }
-  }
-
-  Future<bool> submitAnswer(int questionId, {String? text, String? url, String? filePath, String? selectedOption}) async {
-    try {
-      final Map<String, dynamic> body = {'examQuestionId': questionId};
-      if (text != null) body['textAnswer'] = text;
-      if (selectedOption != null) {
-        final selectedId = int.tryParse(selectedOption);
-        if (selectedId != null) {
-          body['selectedOptionIds'] = [selectedId];
-        }
-      }
-
-      await _apiClient.post(ApiEndpoints.answers, body);
-      return true;
-    } catch (e) {
-      AppSnackbar.showError(e);
-      return false;
-    }
-  }
 
   Future<List<Map<String, dynamic>>> getChats() async {
     try {
@@ -571,13 +544,6 @@ class ApiService {
     }
   }
 
-  Future<void> unregisterFcmToken(String token) async {
-    try {
-      await _apiClient.delete('${ApiEndpoints.fcmToken}?token=$token');
-    } catch (e) {
-      print('API Error (Unregister FCM Token): $e');
-    }
-  }
 
   // ───────────────────────────────────────────────────────────────────────────
   // Teacher — Profile
@@ -589,6 +555,32 @@ class ApiService {
       return TeacherProfileModel.fromJson(json.decode(response.body));
     } catch (e) {
       print('API Error (Teacher Profile): $e');
+      return null;
+    }
+  }
+
+  Future<TeacherProfileModel?> updateMyTeacherProfile({
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? newPassword,
+    String? currentPassword,
+    String? phoneNumber,
+    DateTime? birthDate,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (firstName != null) body['firstName'] = firstName;
+      if (lastName != null) body['lastName'] = lastName;
+      if (email != null) body['email'] = email;
+      if (newPassword != null) body['newPassword'] = newPassword;
+      if (currentPassword != null) body['currentPassword'] = currentPassword;
+      if (phoneNumber != null) body['phoneNumber'] = phoneNumber;
+      if (birthDate != null) body['birthDate'] = birthDate.toIso8601String().split('T').first;
+      final response = await _apiClient.put(ApiEndpoints.teacherProfileMe, body);
+      return TeacherProfileModel.fromJson(json.decode(response.body));
+    } catch (e) {
+      print('API Error (Update Teacher Profile): $e');
       return null;
     }
   }
@@ -643,15 +635,6 @@ class ApiService {
     }
   }
 
-  Future<TeacherExam?> getTeacherExamById(int examId) async {
-    try {
-      final response = await _apiClient.get('${ApiEndpoints.teacherExams}/$examId');
-      return TeacherExam.fromJson(json.decode(response.body) as Map<String, dynamic>);
-    } catch (e) {
-      print('API Error (Teacher Exam Detail): $e');
-      return null;
-    }
-  }
 
   Future<TeacherExam?> createTeacherExam(Map<String, dynamic> body) async {
     try {
@@ -973,39 +956,4 @@ class ApiService {
     }
   }
 
-  // ── Admin Dashboard ─────────────────────────────────────────────────────────
-
-  Future<AdminDashboardStats?> getAdminDashboardStats() async {
-    try {
-      final response = await _apiClient.get(ApiEndpoints.adminDashboardStats);
-      return AdminDashboardStats.fromJson(json.decode(response.body) as Map<String, dynamic>);
-    } catch (e) {
-      print('API Error (AdminStats): $e');
-      return null;
-    }
-  }
-
-  Future<List<AdminRecentReport>> getAdminRecentReports({int size = 10}) async {
-    try {
-      final response = await _apiClient.get(
-          '${ApiEndpoints.adminDashboardRecentReports}?page=0&size=$size&sort=submittedAt,desc');
-      final body = json.decode(response.body) as Map<String, dynamic>;
-      final content = body['content'] as List? ?? [];
-      return content.map((e) => AdminRecentReport.fromJson(e as Map<String, dynamic>)).toList();
-    } catch (e) {
-      print('API Error (AdminReports): $e');
-      return [];
-    }
-  }
-
-  Future<List<AdminGroup>> getAdminGroups() async {
-    try {
-      final response = await _apiClient.get(ApiEndpoints.adminDashboardGroups);
-      final list = json.decode(response.body) as List? ?? [];
-      return list.map((e) => AdminGroup.fromJson(e as Map<String, dynamic>)).toList();
-    } catch (e) {
-      print('API Error (AdminGroups): $e');
-      return [];
-    }
-  }
 }

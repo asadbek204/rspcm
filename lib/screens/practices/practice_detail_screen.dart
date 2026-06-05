@@ -8,6 +8,8 @@ class PracticeDetailScreen extends StatefulWidget {
   final Practice practice;
   /// Participation ID, if already known from the list screen.
   final int? participationId;
+  /// Pre-loaded team data — skips the /practice-participations/me call if provided.
+  final PracticeTeamResponse? preloadedTeam;
   /// Which tab to open initially (0 = Задание и сдача, 1 = История сдач, 2 = Дневник)
   final int initialTab;
 
@@ -15,6 +17,7 @@ class PracticeDetailScreen extends StatefulWidget {
     super.key,
     required this.practice,
     this.participationId,
+    this.preloadedTeam,
     this.initialTab = 0,
   });
 
@@ -67,7 +70,8 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
     setState(() => _loading = true);
 
     final futures = <Future>[
-      if (widget.practice.workMode == 'TEAM') _api.getTeamByPractice(widget.practice.id),
+      if (widget.practice.workMode == 'TEAM' && widget.preloadedTeam == null)
+        _api.getTeamByPractice(widget.practice.id),
       _api.getMyJournals(),
     ];
 
@@ -81,7 +85,7 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
     setState(() {
       int idx = 0;
       if (widget.practice.workMode == 'TEAM') {
-        _team = results[idx++] as PracticeTeamResponse?;
+        _team = widget.preloadedTeam ?? results[idx++] as PracticeTeamResponse?;
       }
       final allJournals = results[idx++] as List<PracticeJournal>? ?? [];
       _journals = allJournals
@@ -551,11 +555,11 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
                   color: Colors.blue.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.hourglass_top_rounded, color: Colors.blue.shade600, size: 36),
+                child: Icon(Icons.check_circle_outline_rounded, color: Colors.blue.shade600, size: 36),
               ),
               const SizedBox(height: 12),
               Text(
-                'Работа отправлена',
+                'Работа принята',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -564,7 +568,7 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
               ),
               const SizedBox(height: 4),
               Text(
-                'Ожидайте проверки преподавателем',
+                'Оценка ещё не выставлена',
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
             ],
@@ -696,20 +700,14 @@ class _PracticeDetailScreenState extends State<PracticeDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.practice.title,
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _chip(
-                isOverdue ? 'Просрочено' : 'Активна',
-                isOverdue ? Colors.red : Colors.green,
-              ),
-            ],
+          Text(
+            widget.practice.title,
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          _chip(
+            isOverdue ? 'Просрочено' : 'Активна',
+            isOverdue ? Colors.red : Colors.green,
           ),
           const SizedBox(height: 16),
           _metaRow(theme, Icons.calendar_today_outlined,

@@ -7,7 +7,6 @@ class ApiEndpoints {
   static const String register = '/auth/register';
   static const String verifyOtp = '/auth/verify-otp';
   static const String resendOtp = '/auth/resend-otp';
-  static const String swaggerAdminToken = '/auth/swagger-admin-token';
 
   // Student Dashboard
   static const String studentDashboard = '/student-dashboard/me';
@@ -23,18 +22,12 @@ class ApiEndpoints {
 
   // Profiles
   static const String myProfile = '/profiles/students/me';
-  static const String studentProfile = '/profiles/students'; // Append /{userId}
 
   // Subjects
   static const String subjects = '/subjects';
 
   // Practices
-  static const String practices = '/practices';
   static const String practiceDetail = '/practices'; // Append /{id}
-  static const String assignGroups = '/assign-groups'; // Use with practice ID
-
-  // Practice Topics
-  static const String practiceTopics = '/topics'; // Base is /api/practices/{id}/topics
 
   // Practice Teams
   static const String practiceParticipationsMe = '/practice-participations/me';
@@ -47,12 +40,6 @@ class ApiEndpoints {
   // Journals
   static const String myJournals = '/practice-journals/me';
   static const String createJournal = '/practice-journals';
-  static const String journalsByPractice = '/practice-journals/practice'; // Append /{practiceId}
-
-  // Answers (Homework/Assignments)
-  static const String answers = '/answers';
-  static const String myAnswers = '/answers/me';
-  static const String answerScore = '/score'; // Use with answer ID
 
   // Practice submissions
   static const String practiceSubmissions = '/practice-submissions'; // /participation/{id}, /participation/{id}/submit
@@ -98,8 +85,4 @@ class ApiEndpoints {
   // Teacher — question bank  (GET /questions?own=true, POST /questions, PUT /questions/{id}, DELETE /questions/{id})
   static const String teacherQuestions = '/questions';
 
-  // Admin Dashboard
-  static const String adminDashboardStats = '/admin-dashboard/general-stats';
-  static const String adminDashboardRecentReports = '/admin-dashboard/recent-reports';
-  static const String adminDashboardGroups = '/admin-dashboard/groups';
 }

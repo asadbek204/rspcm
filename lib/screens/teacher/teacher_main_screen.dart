@@ -67,6 +67,12 @@ class _TeacherMainScreenState extends State<TeacherMainScreen> {
       drawer: const TeacherDrawer(),
       appBar: AppBar(
         title: Text(titles[_selectedIndex]),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         actions: [
           // — Notification bell with badge
           Padding(
@@ -111,24 +117,6 @@ class _TeacherMainScreenState extends State<TeacherMainScreen> {
               ],
             ),
           ),
-          if (_selectedIndex == 0)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: theme.primaryColor.withValues(alpha: 0.12),
-                child: Text(
-                  auth.displayName.isNotEmpty
-                      ? auth.displayName[0].toUpperCase()
-                      : 'П',
-                  style: TextStyle(
-                    color: theme.primaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
       body: screens[_selectedIndex],

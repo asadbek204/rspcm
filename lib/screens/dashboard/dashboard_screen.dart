@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
+import '../practices/practice_detail_screen.dart';
+import '../exams/exams_list_screen.dart';
 import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -28,6 +30,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         auth.fetchProfile();
       }
     });
+  }
+
+  Future<void> _navigateToItem(BuildContext context, DashboardItem item) async {
+    final nav = Navigator.of(context);
+    if (item.type == 'PRACTICE') {
+      final result = await _apiService.getMyParticipationByPracticeId(item.id);
+      if (result != null && mounted) {
+        nav.push(MaterialPageRoute(
+          builder: (_) => PracticeDetailScreen(
+            practice: result.practice,
+            participationId: result.participationId,
+            preloadedTeam: result.team,
+          ),
+        ));
+      }
+    } else {
+      final exams = await _apiService.getMyExams();
+      final matches = exams.where((e) => e.id == item.id);
+      if (matches.isNotEmpty && mounted) {
+        nav.push(MaterialPageRoute(
+          builder: (_) => ExamDetailScreen(exam: matches.first),
+        ));
+      }
+    }
   }
 
   Future<void> _load() async {
@@ -133,10 +159,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final theme = Theme.of(context);
     final daysLeft = item.deadline.difference(DateTime.now()).inDays;
     final isUrgent = daysLeft <= 3;
-    final tabIndex = item.type == 'PRACTICE' ? 1 : 3;
 
     return GestureDetector(
-      onTap: () => widget.onTabSelected?.call(tabIndex),
+      onTap: () => _navigateToItem(context, item),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -375,10 +400,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: items.take(3).map((item) {
         final daysLeft = item.deadline.difference(DateTime.now()).inDays;
         final isOverdue = daysLeft < 0;
-        final tabIndex = isPractice ? 1 : 3;
 
         return GestureDetector(
-          onTap: () => widget.onTabSelected?.call(tabIndex),
+          onTap: () => _navigateToItem(context, item),
           child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

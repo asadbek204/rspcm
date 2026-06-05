@@ -7,7 +7,7 @@ import '../models/models.dart';
 
 class AuthProvider with ChangeNotifier {
   String? _token;
-  String _role = ''; // 'TEACHER' or 'STUDENT'
+  String _role = ''; // 'TEACHER' or 'STUDENT' (admin not supported in mobile)
   StudentProfileResponse? _studentProfile;
   TeacherProfileModel? _teacherProfile;
   bool _isAuthenticated = false;
@@ -18,7 +18,6 @@ class AuthProvider with ChangeNotifier {
   String get role => _role;
   bool get isTeacher => _role == 'TEACHER';
   bool get isStudent => _role == 'STUDENT';
-  bool get isAdmin => _role == 'ADMIN';
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
 
@@ -58,7 +57,7 @@ class AuthProvider with ChangeNotifier {
     try {
       if (_isAuthenticated) {
         await _fetchProfile();
-        if (_role != 'ADMIN' && _studentProfile == null && _teacherProfile == null) {
+        if (_studentProfile == null && _teacherProfile == null) {
           await logout();
           return;
         }
@@ -73,8 +72,6 @@ class AuthProvider with ChangeNotifier {
   Future<void> _fetchProfile() async {
     if (_role == 'TEACHER') {
       _teacherProfile = await _apiService.getTeacherProfile();
-    } else if (_role == 'ADMIN') {
-      // Admin profile not fetched separately — name comes from token/prefs
     } else {
       _studentProfile = await _apiService.getMyProfile();
     }
@@ -92,14 +89,65 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> updateProfile({int? course}) async {
+  Future<bool> updateProfile({
+    int? course,
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? newPassword,
+    String? currentPassword,
+    DateTime? birthDate,
+  }) async {
     if (isTeacher) return false;
     _isLoading = true;
     notifyListeners();
     try {
-      final updated = await _apiService.updateMyProfile(course: course);
+      final updated = await _apiService.updateMyProfile(
+        course: course,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        newPassword: newPassword,
+        currentPassword: currentPassword,
+        birthDate: birthDate,
+      );
       if (updated != null) {
         _studentProfile = updated;
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateTeacherProfile({
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? newPassword,
+    String? currentPassword,
+    String? phoneNumber,
+    DateTime? birthDate,
+  }) async {
+    if (!isTeacher) return false;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final updated = await _apiService.updateMyTeacherProfile(
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        newPassword: newPassword,
+        currentPassword: currentPassword,
+        phoneNumber: phoneNumber,
+        birthDate: birthDate,
+      );
+      if (updated != null) {
+        _teacherProfile = updated;
         return true;
       }
       return false;
@@ -125,9 +173,7 @@ class AuthProvider with ChangeNotifier {
 
       // Determine role from response
       final roles = response.roles;
-      if (roles.any((r) => r.toUpperCase().contains('ADMIN'))) {
-        _role = 'ADMIN';
-      } else if (roles.any((r) => r.toUpperCase().contains('TEACHER'))) {
+      if (roles.any((r) => r.toUpperCase().contains('TEACHER'))) {
         _role = 'TEACHER';
       } else {
         _role = 'STUDENT';

@@ -6,8 +6,8 @@ import 'package:stomp_dart_client/stomp_dart_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 
-// WebSocket base URL derived from the REST API base
-const String _wsBaseUrl = 'ws://68.183.79.219/ws';
+// WebSocket base URL — must use wss:// when REST API is on https://
+const String _wsBaseUrl = 'wss://api.rspcm.uz/ws';
 
 class ChatViewScreen extends StatefulWidget {
   final String chatId;
